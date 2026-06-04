@@ -1,4 +1,4 @@
-import { AlbumAPIResponseModel, AlbumModel } from '#modules/albums/models'
+import { AlbumAPIResponseModel, AlbumModel } from '#modules/albums/album.model'
 import { z } from 'zod'
 
 export const ArtistAlbumAPIResponseModel = z.object({

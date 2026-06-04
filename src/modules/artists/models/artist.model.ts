@@ -1,5 +1,5 @@
 import { DownloadLinkModel } from '#common/models'
-import { AlbumAPIResponseModel, AlbumModel } from '#modules/albums/models'
+import { AlbumAPIResponseModel, AlbumModel } from '#modules/albums/album.model'
 import { SongAPIResponseModel, SongModel } from '#modules/songs/models'
 import { z } from 'zod'
 
