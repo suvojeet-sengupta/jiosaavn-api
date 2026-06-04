@@ -1,0 +1,8 @@
+allowBuilds:
+  esbuild: true
+  sharp: true
+  simple-git-hooks: true
+  unrs-resolver: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - nitro@3.0.260603-beta
