@@ -1,14 +1,4 @@
 import { BaseUseCaseService } from '#common/classes'
-import {
-  CreateSongStationUseCase,
-  GetSongByIdsUseCase,
-  GetSongByLinkUseCase,
-  GetSongSuggestionsUseCase
-} from '#modules/songs/use-cases'
+import * as BaseAllUseCases from '#modules/songs/use-cases'
 
-export class SongService extends BaseUseCaseService({
-  GetSongByIdsUseCase,
-  GetSongByLinkUseCase,
-  CreateSongStationUseCase,
-  GetSongSuggestionsUseCase
-}) {}
+export class SongService extends BaseUseCaseService(BaseAllUseCases) {}
