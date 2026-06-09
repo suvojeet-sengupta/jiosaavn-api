@@ -1,6 +1,6 @@
 import crypto from 'node-forge'
 
-export const createDownloadLinks = (encryptedMediaUrl?: string) => {
+export const createDownloadLinks = (encryptedMediaUrl?: string | null) => {
   if (!encryptedMediaUrl) return []
 
   const qualities = [
@@ -27,7 +27,7 @@ export const createDownloadLinks = (encryptedMediaUrl?: string) => {
   }))
 }
 
-export const createImageLinks = (link?: string) => {
+export const createImageLinks = (link?: string | null) => {
   if (!link) return []
 
   const qualities = ['50x50', '150x150', '500x500']
