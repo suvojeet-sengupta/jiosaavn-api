@@ -21,25 +21,22 @@ export class GetSongSuggestionsUseCase extends useCase(z.array(SongModel)) {
 
     const data = await useFetch({
       endpoint: Endpoints.songs.suggestions,
-      params: {
-        stationid: stationId,
-        k: limit
-      },
+      params: { stationid: stationId, k: limit },
       context: ApiContextEnum.ANDROID,
-      schema: z.object({ stationid: z.string() }).and(z.record(z.string(), z.object({ song: RawSongModel })))
+      schema: z
+        .object({ stationid: z.string(), song: RawSongModel.optional() })
+        .catchall(z.object({ song: RawSongModel }))
     })
 
-    if (!data) {
-      throw new HTTPException(404, { message: `no suggestions found for the given song` })
-    }
+    if (!data) throw new HTTPException(404, { message: 'no suggestions found for the given song' })
 
-    const { stationid, ...suggestions } = data
+    // `k=1` returns a single suggestion directly under `song`; `k>=2` returns index-keyed `{ song }` entries.
+    const { stationid, song, ...indexed } = data
+    const rawSongs = song ? [song] : Object.values(indexed).map(({ song }) => song)
 
-    return (
-      Object.values(suggestions)
-        .map((element) => element && toSong(element.song))
-        .filter(Boolean)
-        .slice(0, limit) || []
-    )
+    return rawSongs
+      .filter(Boolean)
+      .map((rawSong) => toSong(rawSong))
+      .slice(0, limit)
   }
 }

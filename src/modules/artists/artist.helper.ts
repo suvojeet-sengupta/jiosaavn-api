@@ -82,11 +82,15 @@ export const toArtistMap = (artist: z.infer<typeof RawArtistMapModel>): z.infer<
 
 /** Card artists as objects: from `artistMap` when present (rich sources), else name-only from a joined string (lean sources). */
 export const toArtists = (
-  group: z.infer<typeof RawArtistMapGroupModel> | null | undefined,
+  group: z.infer<typeof RawArtistMapGroupModel> | unknown[] | null | undefined,
   names?: string | null
 ): z.infer<typeof ArtistMapModel>[] => {
-  const list = group?.primary_artists?.length ? group.primary_artists : group?.artists
+  // For credit-less items JioSaavn serializes an empty artist map as `[]` instead of `{ primary_artists, … }`.
+  const map = group && !Array.isArray(group) ? group : undefined
+
+  const list = map?.primary_artists?.length ? map.primary_artists : map?.artists
   if (list?.length) return list.map(toArtistMap)
+
   return names
     ? names.split(',').map((name) => ({ id: '', name: name.trim(), role: '', type: '', url: '', image: [] }))
     : []
