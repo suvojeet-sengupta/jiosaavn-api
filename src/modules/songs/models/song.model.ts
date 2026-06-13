@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { DownloadLinkModel, ImageLinkModel } from '#common/models'
-import { ArtistMapGroupModel, RawArtistMapGroupModel } from '#modules/artists/models/artist-map.model'
+import { ArtistMapGroupModel, ArtistMapModel, RawArtistMapGroupModel } from '#modules/artists/models/artist-map.model'
 
 export const RawSongModel = z.object({
   id: z.string(),
@@ -93,7 +93,7 @@ export const SongSummaryModel = z.object({
   url: z.string(),
   image: z.array(ImageLinkModel),
   album: z.string().nullable(),
-  artists: z.string().nullable(),
+  artists: z.array(ArtistMapModel),
   language: z.string().nullable(),
   explicitContent: z.boolean()
 })
