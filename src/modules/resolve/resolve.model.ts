@@ -11,5 +11,3 @@ export const ResolveResultModel = z.discriminatedUnion('type', [
   z.object({ type: z.literal('artist'), data: ArtistModel }),
   z.object({ type: z.literal('playlist'), data: PlaylistModel })
 ])
-
-export type ResolveResult = z.infer<typeof ResolveResultModel>

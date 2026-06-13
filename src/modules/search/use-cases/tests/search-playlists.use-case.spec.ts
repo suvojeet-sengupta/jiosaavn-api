@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { paginated, PlaylistSummaryModel } from '#common/models'
+import { paginated } from '#common/models'
+import { PlaylistSummaryModel } from '#modules/playlists/playlist.model'
 import { SearchPlaylistsUseCase } from '#modules/search/use-cases'
 
 describe('SearchPlaylists', () => {

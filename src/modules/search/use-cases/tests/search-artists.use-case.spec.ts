@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { ArtistSummaryModel, paginated } from '#common/models'
+import { paginated } from '#common/models'
+import { ArtistSummaryModel } from '#modules/artists/models'
 import { SearchArtistsUseCase } from '#modules/search/use-cases'
 
 describe('SearchArtists', () => {

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DownloadLinkModel } from '#common/models'
+import { DownloadLinkModel, ImageLinkModel } from '#common/models'
 import { AlbumModel, RawAlbumModel } from '#modules/albums/album.model'
 import { RawSongModel, SongModel } from '#modules/songs/models'
 
@@ -105,4 +105,13 @@ export const ArtistModel = z.object({
       type: z.string()
     })
   )
+})
+
+export const ArtistSummaryModel = z.object({
+  type: z.literal('artist'),
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  image: z.array(ImageLinkModel),
+  role: z.string().nullable()
 })

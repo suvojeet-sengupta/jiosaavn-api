@@ -1,12 +1,14 @@
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { toPage, useFetch } from '#common/helpers'
-import { AlbumSummaryModel, paginated } from '#common/models'
-import { SearchAlbumAPIResponseModel, type SearchArgs } from '#modules/search/models'
+import { paginated } from '#common/models'
+import { AlbumSummaryModel } from '#modules/albums/album.model'
+import { SearchAlbumAPIResponseModel, type SearchQuery } from '#modules/search/models'
 import { albumResultToSummary } from '#modules/search/search.helper'
+import type { z } from 'zod'
 
 export class SearchAlbumsUseCase extends useCase(paginated(AlbumSummaryModel)) {
-  async execute({ query, page, limit }: SearchArgs) {
+  async execute({ query, page, limit }: z.infer<typeof SearchQuery>) {
     const data = await useFetch({
       endpoint: Endpoints.search.albums,
       params: { q: query, p: page - 1, n: limit },

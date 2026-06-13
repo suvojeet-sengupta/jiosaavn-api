@@ -1,4 +1,4 @@
-import { ErrorModel, paginated, type Paginated } from '#common/models'
+import { ErrorModel, paginated } from '#common/models'
 import type { z } from 'zod'
 
 export const openApiJsonResponse = <Schema extends z.ZodTypeAny>(
@@ -18,7 +18,10 @@ export const errorResponses = {
   404: { description: 'Not found', content: { 'application/json': { schema: ErrorModel } } }
 }
 
-export const toPage = <T>(results: T[], args: { page: number; limit: number; total?: number }): Paginated<T> => ({
+export const toPage = <T>(
+  results: T[],
+  args: { page: number; limit: number; total?: number }
+): { total: number; page: number; limit: number; results: T[] } => ({
   total: args.total ?? results.length,
   page: args.page,
   limit: args.limit,

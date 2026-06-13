@@ -5,10 +5,10 @@ import { toPage, useFetch } from '#common/helpers'
 import { paginated } from '#common/models'
 import { RawSongModel, SongModel } from '#modules/songs/models'
 import { createSongPayload } from '#modules/songs/song.helper'
-import type { SearchArgs } from '#modules/search/models'
+import type { SearchQuery } from '#modules/search/models'
 
 export class SearchSongsUseCase extends useCase(paginated(SongModel)) {
-  async execute({ query, page, limit }: SearchArgs) {
+  async execute({ query, page, limit }: z.infer<typeof SearchQuery>) {
     const data = await useFetch({
       endpoint: Endpoints.search.songs,
       params: { q: query, p: page - 1, n: limit },

@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { AlbumSummaryModel, ArtistSummaryModel, paginated, PlaylistSummaryModel } from '#common/models'
+import { paginated } from '#common/models'
+import { AlbumSummaryModel } from '#modules/albums/album.model'
+import { ArtistSummaryModel } from '#modules/artists/models'
 import { SearchController } from '#modules/index'
+import { PlaylistSummaryModel } from '#modules/playlists/playlist.model'
 import { SearchResultModel } from '#modules/search/models'
 import { SongModel } from '#modules/songs/models'
 

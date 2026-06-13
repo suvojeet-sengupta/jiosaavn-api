@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { AlbumSummaryModel, paginated } from '#common/models'
+import { paginated } from '#common/models'
+import { AlbumSummaryModel } from '#modules/albums/album.model'
 import { SearchAlbumsUseCase } from '#modules/search/use-cases'
 
 describe('SearchAlbums', () => {
