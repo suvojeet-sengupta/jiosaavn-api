@@ -1,5 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { apiReference } from '@scalar/hono-api-reference'
+import { Scalar } from '@scalar/hono-api-reference'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { prettyJSON } from 'hono/pretty-json'
@@ -62,10 +62,11 @@ export class App {
 
     this.app.get(
       '/docs',
-      apiReference({
+      Scalar({
         pageTitle: 'JioSaavn API Documentation',
-        theme: 'deepSpace',
+        theme: 'purple',
         isEditable: false,
+        defaultOpenAllTags: true,
         layout: 'modern',
         darkMode: true,
         metaData: {
