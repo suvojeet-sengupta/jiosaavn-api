@@ -1,10 +1,10 @@
 import { createDownloadLinks, createImageLinks } from '#common/helpers'
 import { toBoolean, toList, toNumber, toText } from '#common/utils'
-import { createArtistMapPayload } from '#modules/artists/artist.helper'
+import { toArtistMap } from '#modules/artists/artist.helper'
 import type { RawSongModel, SongModel } from '#modules/songs/models'
 import type { z } from 'zod'
 
-export const createSongPayload = (song: z.infer<typeof RawSongModel>): z.infer<typeof SongModel> => ({
+export const toSong = (song: z.infer<typeof RawSongModel>): z.infer<typeof SongModel> => ({
   id: song.id,
   name: song.title,
   subtitle: toText(song.subtitle),
@@ -30,9 +30,9 @@ export const createSongPayload = (song: z.infer<typeof RawSongModel>): z.infer<t
     url: toText(song.more_info?.album_url)
   },
   artists: {
-    primary: toList(song.more_info?.artistMap?.primary_artists, createArtistMapPayload),
-    featured: toList(song.more_info?.artistMap?.featured_artists, createArtistMapPayload),
-    all: toList(song.more_info?.artistMap?.artists, createArtistMapPayload)
+    primary: toList(song.more_info?.artistMap?.primary_artists, toArtistMap),
+    featured: toList(song.more_info?.artistMap?.featured_artists, toArtistMap),
+    all: toList(song.more_info?.artistMap?.artists, toArtistMap)
   },
   image: createImageLinks(song.image),
   downloadUrl: createDownloadLinks(song.more_info?.encrypted_media_url)

@@ -1,11 +1,11 @@
 import { createImageLinks } from '#common/helpers'
 import { toBoolean, toList, toNumber, toText } from '#common/utils'
-import { createArtistMapPayload } from '#modules/artists/artist.helper'
-import { createSongPayload } from '#modules/songs/song.helper'
+import { toArtistMap } from '#modules/artists/artist.helper'
+import { toSong } from '#modules/songs/song.helper'
 import type { AlbumModel, RawAlbumModel } from '#modules/albums/album.model'
 import type { z } from 'zod'
 
-export const createAlbumPayload = (album: z.infer<typeof RawAlbumModel>): z.infer<typeof AlbumModel> => ({
+export const toAlbum = (album: z.infer<typeof RawAlbumModel>): z.infer<typeof AlbumModel> => ({
   id: album.id,
   name: album.title,
   subtitle: toText(album.subtitle),
@@ -22,10 +22,10 @@ export const createAlbumPayload = (album: z.infer<typeof RawAlbumModel>): z.infe
   copyright: toText(album.more_info?.copyright_text),
   songCount: toNumber(album.more_info?.song_count),
   artists: {
-    primary: toList(album.more_info?.artistMap?.primary_artists, createArtistMapPayload),
-    featured: toList(album.more_info?.artistMap?.featured_artists, createArtistMapPayload),
-    all: toList(album.more_info?.artistMap?.artists, createArtistMapPayload)
+    primary: toList(album.more_info?.artistMap?.primary_artists, toArtistMap),
+    featured: toList(album.more_info?.artistMap?.featured_artists, toArtistMap),
+    all: toList(album.more_info?.artistMap?.artists, toArtistMap)
   },
   image: createImageLinks(album.image),
-  songs: toList(album.list, createSongPayload)
+  songs: toList(album.list, toSong)
 })

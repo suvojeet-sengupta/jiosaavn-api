@@ -2,7 +2,7 @@ import { HTTPException } from 'hono/http-exception'
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { useFetch } from '#common/helpers'
-import { createPlaylistPayload } from '#modules/playlists/playlist.helper'
+import { toPlaylist } from '#modules/playlists/playlist.helper'
 import { PlaylistModel, RawPlaylistModel } from '#modules/playlists/playlist.model'
 
 export interface GetPlaylistByIdArgs {
@@ -25,7 +25,7 @@ export class GetPlaylistByIdUseCase extends useCase(PlaylistModel) {
 
     if (!data) throw new HTTPException(404, { message: 'playlist not found' })
 
-    const playlist = createPlaylistPayload(data)
+    const playlist = toPlaylist(data)
     return {
       ...playlist,
       songCount: playlist?.songs?.length || null,

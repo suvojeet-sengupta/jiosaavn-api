@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { useFetch } from '#common/helpers'
-import { createArtistPayload } from '#modules/artists/artist.helper'
+import { toArtist } from '#modules/artists/artist.helper'
 import { ArtistModel, RawArtistModel } from '#modules/artists/models'
 
 export interface GetArtistByLinkArgs {
@@ -35,6 +35,6 @@ export class GetArtistByLinkUseCase extends useCase(ArtistModel) {
 
     if (!entity) throw new HTTPException(404, { message: 'artist not found' })
 
-    return createArtistPayload(entity)
+    return toArtist(entity)
   }
 }

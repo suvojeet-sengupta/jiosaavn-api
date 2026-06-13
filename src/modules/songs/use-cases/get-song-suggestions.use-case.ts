@@ -5,7 +5,7 @@ import { Endpoints } from '#common/constants'
 import { ApiContextEnum } from '#common/enums'
 import { useFetch } from '#common/helpers'
 import { RawSongModel, SongModel } from '#modules/songs/models'
-import { createSongPayload } from '#modules/songs/song.helper'
+import { toSong } from '#modules/songs/song.helper'
 import { CreateSongStationUseCase } from '#modules/songs/use-cases'
 
 export interface GetSongSuggestionsArgs {
@@ -37,7 +37,7 @@ export class GetSongSuggestionsUseCase extends useCase(z.array(SongModel)) {
 
     return (
       Object.values(suggestions)
-        .map((element) => element && createSongPayload(element.song))
+        .map((element) => element && toSong(element.song))
         .filter(Boolean)
         .slice(0, limit) || []
     )

@@ -4,7 +4,7 @@ import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { useFetch } from '#common/helpers'
 import { RawSongModel, SongModel } from '#modules/songs/models'
-import { createSongPayload } from '#modules/songs/song.helper'
+import { toSong } from '#modules/songs/song.helper'
 
 export class GetSongByLinkUseCase extends useCase(z.array(SongModel)) {
   async execute(token: string) {
@@ -18,6 +18,6 @@ export class GetSongByLinkUseCase extends useCase(z.array(SongModel)) {
 
     if (!songs.length) throw new HTTPException(404, { message: 'song not found' })
 
-    return songs.map((song) => createSongPayload(song))
+    return songs.map((song) => toSong(song))
   }
 }

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { useFetch } from '#common/helpers'
-import { createPlaylistPayload } from '#modules/playlists/playlist.helper'
+import { toPlaylist } from '#modules/playlists/playlist.helper'
 import { PlaylistModel, RawPlaylistModel } from '#modules/playlists/playlist.model'
 
 export interface GetPlaylistByLinkArgs {
@@ -29,7 +29,7 @@ export class GetPlaylistByLinkUseCase extends useCase(PlaylistModel) {
 
     if (!entity) throw new HTTPException(404, { message: 'playlist not found' })
 
-    const playlist = createPlaylistPayload(entity)
+    const playlist = toPlaylist(entity)
 
     return {
       ...playlist,

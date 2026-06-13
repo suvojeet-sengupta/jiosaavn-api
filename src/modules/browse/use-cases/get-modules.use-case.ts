@@ -1,7 +1,7 @@
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { useFetch } from '#common/helpers'
-import { createModulesPayload } from '#modules/browse/browse.helper'
+import { toModules } from '#modules/browse/browse.helper'
 import { LaunchDataAPIResponseModel, ModulesModel } from '#modules/browse/models'
 
 export class GetModulesUseCase extends useCase(ModulesModel) {
@@ -12,6 +12,6 @@ export class GetModulesUseCase extends useCase(ModulesModel) {
       schema: LaunchDataAPIResponseModel
     })
 
-    return createModulesPayload(data)
+    return toModules(data)
   }
 }

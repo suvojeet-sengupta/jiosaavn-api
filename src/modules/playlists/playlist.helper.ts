@@ -1,11 +1,11 @@
 import { createImageLinks } from '#common/helpers'
 import { toBoolean, toList, toNumber, toText } from '#common/utils'
-import { createArtistMapPayload } from '#modules/artists/artist.helper'
-import { createSongPayload } from '#modules/songs/song.helper'
+import { toArtistMap } from '#modules/artists/artist.helper'
+import { toSong } from '#modules/songs/song.helper'
 import type { PlaylistModel, RawPlaylistModel } from '#modules/playlists/playlist.model'
 import type { z } from 'zod'
 
-export const createPlaylistPayload = (playlist: z.infer<typeof RawPlaylistModel>): z.infer<typeof PlaylistModel> => ({
+export const toPlaylist = (playlist: z.infer<typeof RawPlaylistModel>): z.infer<typeof PlaylistModel> => ({
   id: playlist.id,
   name: playlist.title,
   subtitle: toText(playlist.subtitle),
@@ -28,7 +28,7 @@ export const createPlaylistPayload = (playlist: z.infer<typeof RawPlaylistModel>
     name: toText([playlist.more_info?.firstname, playlist.more_info?.lastname].filter(Boolean).join(' ')),
     username: toText(playlist.more_info?.username)
   },
-  artists: toList(playlist.more_info?.artists, createArtistMapPayload),
+  artists: toList(playlist.more_info?.artists, toArtistMap),
   image: createImageLinks(playlist.image),
-  songs: toList(playlist.list, createSongPayload)
+  songs: toList(playlist.list, toSong)
 })

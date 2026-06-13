@@ -4,7 +4,7 @@ import { toPage, useFetch } from '#common/helpers'
 import { paginated } from '#common/models'
 import { AlbumSummaryModel } from '#modules/albums/album.model'
 import { SearchAlbumAPIResponseModel, type SearchQuery } from '#modules/search/models'
-import { albumResultToSummary } from '#modules/search/search.helper'
+import { toAlbumSummary } from '#modules/search/search.helper'
 import type { z } from 'zod'
 
 export class SearchAlbumsUseCase extends useCase(paginated(AlbumSummaryModel)) {
@@ -15,6 +15,6 @@ export class SearchAlbumsUseCase extends useCase(paginated(AlbumSummaryModel)) {
       schema: SearchAlbumAPIResponseModel
     })
 
-    return toPage(data.results.map(albumResultToSummary), { page, limit, total: data.total })
+    return toPage(data.results.map(toAlbumSummary), { page, limit, total: data.total })
   }
 }

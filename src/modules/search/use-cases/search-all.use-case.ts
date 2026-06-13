@@ -2,7 +2,7 @@ import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { useFetch } from '#common/helpers'
 import { SearchAPIResponseModel, SearchResultModel } from '#modules/search/models'
-import { createSearchPayload } from '#modules/search/search.helper'
+import { toSearchResult } from '#modules/search/search.helper'
 
 export class SearchAllUseCase extends useCase(SearchResultModel) {
   async execute(query: string) {
@@ -12,6 +12,6 @@ export class SearchAllUseCase extends useCase(SearchResultModel) {
       schema: SearchAPIResponseModel
     })
 
-    return createSearchPayload(data)
+    return toSearchResult(data)
   }
 }

@@ -4,7 +4,7 @@ import { toPage, useFetch } from '#common/helpers'
 import { paginated } from '#common/models'
 import { ArtistSummaryModel } from '#modules/artists/models'
 import { SearchArtistAPIResponseModel, type SearchQuery } from '#modules/search/models'
-import { artistResultToSummary } from '#modules/search/search.helper'
+import { toArtistSummary } from '#modules/search/search.helper'
 import type { z } from 'zod'
 
 export class SearchArtistsUseCase extends useCase(paginated(ArtistSummaryModel)) {
@@ -15,6 +15,6 @@ export class SearchArtistsUseCase extends useCase(paginated(ArtistSummaryModel))
       schema: SearchArtistAPIResponseModel
     })
 
-    return toPage(data.results.map(artistResultToSummary), { page, limit, total: data.total })
+    return toPage(data.results.map(toArtistSummary), { page, limit, total: data.total })
   }
 }

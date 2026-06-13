@@ -4,7 +4,7 @@ import { Endpoints } from '#common/constants'
 import { toPage, useFetch } from '#common/helpers'
 import { paginated } from '#common/models'
 import { RawSongModel, SongModel } from '#modules/songs/models'
-import { createSongPayload } from '#modules/songs/song.helper'
+import { toSong } from '#modules/songs/song.helper'
 
 export interface GetArtistSongsArgs {
   artistId: string
@@ -35,7 +35,7 @@ export class GetArtistSongsUseCase extends useCase(paginated(SongModel)) {
       })
     })
 
-    const results = data.topSongs.songs.map(createSongPayload)
+    const results = data.topSongs.songs.map(toSong)
     return toPage(results, { page, limit: results.length, total: data.topSongs.total })
   }
 }

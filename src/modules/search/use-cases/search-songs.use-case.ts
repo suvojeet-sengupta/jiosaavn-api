@@ -4,7 +4,7 @@ import { Endpoints } from '#common/constants'
 import { toPage, useFetch } from '#common/helpers'
 import { paginated } from '#common/models'
 import { RawSongModel, SongModel } from '#modules/songs/models'
-import { createSongPayload } from '#modules/songs/song.helper'
+import { toSong } from '#modules/songs/song.helper'
 import type { SearchQuery } from '#modules/search/models'
 
 export class SearchSongsUseCase extends useCase(paginated(SongModel)) {
@@ -19,6 +19,6 @@ export class SearchSongsUseCase extends useCase(paginated(SongModel)) {
       })
     })
 
-    return toPage(data.results.map(createSongPayload), { page, limit, total: data.total })
+    return toPage(data.results.map(toSong), { page, limit, total: data.total })
   }
 }

@@ -3,7 +3,7 @@ import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
 import { toPage, useFetch } from '#common/helpers'
 import { paginated } from '#common/models'
-import { createAlbumPayload } from '#modules/albums/album.helper'
+import { toAlbum } from '#modules/albums/album.helper'
 import { AlbumModel, RawAlbumModel } from '#modules/albums/album.model'
 
 export interface GetArtistAlbumsArgs {
@@ -37,7 +37,7 @@ export class GetArtistAlbumsUseCase extends useCase(paginated(AlbumModel)) {
       })
     })
 
-    const results = data.topAlbums.albums.map(createAlbumPayload)
+    const results = data.topAlbums.albums.map(toAlbum)
     return toPage(results, { page, limit: results.length, total: data.topAlbums.total })
   }
 }

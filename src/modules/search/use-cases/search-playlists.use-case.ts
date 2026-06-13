@@ -4,7 +4,7 @@ import { toPage, useFetch } from '#common/helpers'
 import { paginated } from '#common/models'
 import { PlaylistSummaryModel } from '#modules/playlists/playlist.model'
 import { SearchPlaylistAPIResponseModel, type SearchQuery } from '#modules/search/models'
-import { playlistResultToSummary } from '#modules/search/search.helper'
+import { toPlaylistSummary } from '#modules/search/search.helper'
 import type { z } from 'zod'
 
 export class SearchPlaylistsUseCase extends useCase(paginated(PlaylistSummaryModel)) {
@@ -15,6 +15,6 @@ export class SearchPlaylistsUseCase extends useCase(paginated(PlaylistSummaryMod
       schema: SearchPlaylistAPIResponseModel
     })
 
-    return toPage(data.results.map(playlistResultToSummary), { page, limit, total: data.total })
+    return toPage(data.results.map(toPlaylistSummary), { page, limit, total: data.total })
   }
 }
