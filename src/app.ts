@@ -67,6 +67,7 @@ export class App {
         theme: 'purple',
         isEditable: false,
         defaultOpenAllTags: true,
+        expandAllResponses: true,
         layout: 'modern',
         darkMode: true,
         metaData: {
