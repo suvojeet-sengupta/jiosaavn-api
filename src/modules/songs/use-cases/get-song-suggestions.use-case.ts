@@ -1,4 +1,3 @@
-import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
@@ -27,8 +26,6 @@ export class GetSongSuggestionsUseCase extends useCase(z.array(SongModel)) {
         .object({ stationid: z.string(), song: RawSongModel.optional() })
         .catchall(z.object({ song: RawSongModel }))
     })
-
-    if (!data) throw new HTTPException(404, { message: 'no suggestions found for the given song' })
 
     // `k=1` returns a single suggestion directly under `song`; `k>=2` returns index-keyed `{ song }` entries.
     const { stationid, song, ...indexed } = data

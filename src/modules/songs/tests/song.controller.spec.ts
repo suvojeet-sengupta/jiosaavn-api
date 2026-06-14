@@ -21,4 +21,10 @@ describe('SongController', () => {
     const data = await response.json()
     expect(() => SongModel.parse(data)).not.toThrow()
   })
+
+  it('get song suggestions', async () => {
+    const response = await controller.controller.request('/songs/3IoDK8qI/suggestions?limit=2')
+    const data = (await response.json()) as z.infer<typeof SongModel>[]
+    expect(() => SongModel.parse(data[0])).not.toThrow()
+  })
 })

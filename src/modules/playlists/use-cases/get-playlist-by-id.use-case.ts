@@ -1,7 +1,6 @@
-import { HTTPException } from 'hono/http-exception'
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
-import { useFetch } from '#common/helpers'
+import { assertFound, useFetch } from '#common/helpers'
 import { toPlaylist } from '#modules/playlists/playlist.helper'
 import { PlaylistModel, RawPlaylistModel } from '#modules/playlists/playlist.model'
 
@@ -23,13 +22,11 @@ export class GetPlaylistByIdUseCase extends useCase(PlaylistModel) {
       schema: RawPlaylistModel
     })
 
-    if (!data) throw new HTTPException(404, { message: 'playlist not found' })
-
-    const playlist = toPlaylist(data)
+    const playlist = toPlaylist(assertFound(data, 'title', 'playlist not found'))
     return {
       ...playlist,
-      songCount: playlist?.songs?.length || null,
-      songs: playlist?.songs?.slice(0, limit) || []
+      songCount: playlist.songs.length || null,
+      songs: playlist.songs.slice(0, limit)
     }
   }
 }

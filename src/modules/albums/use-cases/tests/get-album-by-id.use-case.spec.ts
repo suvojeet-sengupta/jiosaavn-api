@@ -1,3 +1,4 @@
+import { HTTPException } from 'hono/http-exception'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { AlbumModel } from '#modules/albums/album.model'
 import { GetAlbumByIdUseCase } from '#modules/albums/use-cases'
@@ -15,9 +16,7 @@ describe('GetAlbumById', () => {
     expect(() => AlbumModel.parse(album)).not.toThrow()
   })
 
-  it('should not get album by id for wrong album id', async () => {
-    const album = await getAlbumByIdUseCase.execute('random-no-id')
-
-    expect(() => AlbumModel.parse(album)).not.toThrow()
+  it('should throw 404 for an unknown album id', async () => {
+    await expect(getAlbumByIdUseCase.execute('random-no-id')).rejects.toThrow(HTTPException)
   })
 })

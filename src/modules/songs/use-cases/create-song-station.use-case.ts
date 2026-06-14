@@ -18,7 +18,7 @@ export class CreateSongStationUseCase extends useCase(z.string()) {
       context: ApiContextEnum.ANDROID
     })
 
-    if (!data || !data.stationid) throw new HTTPException(500, { message: 'could not create station' })
+    if (!data.stationid) throw new HTTPException(500, { message: 'could not create station' })
 
     return data.stationid
   }

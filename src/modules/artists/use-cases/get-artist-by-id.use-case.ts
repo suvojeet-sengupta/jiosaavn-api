@@ -1,7 +1,6 @@
-import { HTTPException } from 'hono/http-exception'
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
-import { useFetch } from '#common/helpers'
+import { assertFound, useFetch } from '#common/helpers'
 import { toArtist } from '#modules/artists/artist.helper'
 import { ArtistModel, RawArtistModel } from '#modules/artists/models'
 
@@ -29,8 +28,6 @@ export class GetArtistByIdUseCase extends useCase(ArtistModel) {
       schema: RawArtistModel
     })
 
-    if (!data) throw new HTTPException(404, { message: 'artist not found' })
-
-    return toArtist(data)
+    return toArtist(assertFound(data, 'name', 'artist not found'))
   }
 }

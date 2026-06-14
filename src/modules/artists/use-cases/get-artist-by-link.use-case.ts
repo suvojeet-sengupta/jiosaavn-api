@@ -1,8 +1,7 @@
-import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { useCase } from '#common/classes'
 import { Endpoints } from '#common/constants'
-import { useFetch } from '#common/helpers'
+import { assertFound, useFetch } from '#common/helpers'
 import { toArtist } from '#modules/artists/artist.helper'
 import { ArtistModel, RawArtistModel } from '#modules/artists/models'
 
@@ -33,8 +32,6 @@ export class GetArtistByLinkUseCase extends useCase(ArtistModel) {
 
     const entity = Array.isArray(data) ? data[0] : data
 
-    if (!entity) throw new HTTPException(404, { message: 'artist not found' })
-
-    return toArtist(entity)
+    return toArtist(assertFound(entity, 'name', 'artist not found'))
   }
 }
