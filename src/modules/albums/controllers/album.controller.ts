@@ -34,7 +34,7 @@ export class AlbumController implements Routes {
               .string()
               .url()
               .optional()
-              .transform((value) => value?.match(/jiosaavn\.com\/album\/[^/]+\/([^/]+)$/)?.[1])
+              .transform((value) => value?.match(/jiosaavn\.com\/album\/[^/]+\/([^/?#]+)/)?.[1])
               .openapi({
                 title: 'Album Link',
                 description: 'A direct link to the album on JioSaavn',

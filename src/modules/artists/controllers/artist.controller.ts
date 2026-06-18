@@ -34,7 +34,7 @@ export class ArtistController implements Routes {
               .string()
               .url()
               .optional()
-              .transform((value) => value?.match(/jiosaavn\.com\/artist\/[^/]+\/([^/]+)$/)?.[1])
+              .transform((value) => value?.match(/jiosaavn\.com\/artist\/[^/]+\/([^/?#]+)/)?.[1])
               .openapi({
                 title: 'Artist Link',
                 description: 'A direct link to the artist on JioSaavn',

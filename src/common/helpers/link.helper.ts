@@ -21,10 +21,13 @@ export const createDownloadLinks = (encryptedMediaUrl: string) => {
   decipher.finish()
   const decryptedLink = decipher.output.getBytes()
 
-  return qualities.map((quality) => ({
-    quality: quality.bitrate,
-    url: decryptedLink.replace('_96', quality.id)
-  }))
+  return qualities.map((quality) => {
+    const url = decryptedLink.replace(/_(12|48|96|160|320)(?=\.mp[34]|\.m4a|$)/, quality.id)
+    return {
+      quality: quality.bitrate,
+      url: url.includes(quality.id) ? url : decryptedLink.replace('_96', quality.id)
+    }
+  })
 }
 
 export const createImageLinks = (link: string) => {

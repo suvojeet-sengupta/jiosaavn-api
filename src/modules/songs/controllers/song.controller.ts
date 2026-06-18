@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
-import { SongModel } from '#modules/songs/models'
+import { SongModel, LyricsModel } from '#modules/songs/models'
 import { SongService } from '#modules/songs/services'
 import { z } from 'zod'
 import type { Routes } from '#common/types'
@@ -36,7 +36,7 @@ export class SongController implements Routes {
               .string()
               .url()
               .optional()
-              .transform((value) => value?.match(/jiosaavn\.com\/song\/[^/]+\/([^/]+)$/)?.[1])
+              .transform((value) => value?.match(/jiosaavn\.com\/song\/[^/]+\/([^/?#]+)/)?.[1])
               .openapi({
                 title: 'Song Link',
                 description: 'A direct link to the song on JioSaavn',
@@ -186,6 +186,51 @@ export class SongController implements Routes {
         const suggestions = await this.songService.getSongSuggestions({ songId, limit: limit || 10 })
 
         return ctx.json({ success: true, data: suggestions })
+      }
+    )
+
+    this.controller.openapi(
+      createRoute({
+        method: 'get',
+        path: '/songs/{id}/lyrics',
+        tags: ['Songs'],
+        summary: 'Retrieve song lyrics',
+        description: 'Retrieve the lyrics of a song by its ID.',
+        operationId: 'getSongLyrics',
+        request: {
+          params: z.object({
+            id: z.string().openapi({
+              description: 'ID of the song to retrieve lyrics for',
+              type: 'string',
+              example: '3IoDK8qI'
+            })
+          })
+        },
+        responses: {
+          200: {
+            description: 'Successful response with song lyrics',
+            content: {
+              'application/json': {
+                schema: z.object({
+                  success: z.boolean().openapi({
+                    description: 'Indicates whether the request was successful',
+                    type: 'boolean',
+                    example: true
+                  }),
+                  data: LyricsModel.openapi({
+                    description: 'Lyrics details'
+                  })
+                })
+              }
+            }
+          },
+          404: { description: 'Lyrics not found for the given song ID' }
+        }
+      }),
+      async (ctx) => {
+        const songId = ctx.req.param('id')
+        const response = await this.songService.getSongLyrics(songId)
+        return ctx.json({ success: true, data: response })
       }
     )
   }
