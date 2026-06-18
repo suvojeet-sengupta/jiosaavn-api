@@ -4,7 +4,7 @@
   "description": "Unofficial JioSaavn API",
   "type": "module",
   "license": "MIT",
-  "repository": "https://github.com/sumitkolhe/jiosaavn-api",
+  "repository": "https://github.com/suvojeet-sengupta/jiosaavn-api",
   "author": "Sumit Kolhe",
   "main": "dist/server.js",
   "module": "dist/index.js",
