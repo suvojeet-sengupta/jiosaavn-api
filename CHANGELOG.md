@@ -1,6 +1,12 @@
 # Changelog
 
 
+## v0.1.1
+
+### 🚀 Enhancements
+- Add `/api/search/albums` and `/api/search/playlists` endpoints to align with Android client.
+- Fix query parameter mapping for `/api/artists/{id}` (added camelCase deserialization support).
+
 ## v0.1.0
 
 [compare changes](https://github.com/sumitkolhe/jiosaavn-api/compare/v0.0.6...v0.1.0)
