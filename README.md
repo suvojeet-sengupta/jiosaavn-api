@@ -3,7 +3,7 @@
 ![GitHub License](https://img.shields.io/github/license/suvojeet-sengupta/jiosaavn-api)
 ![GitHub Release](https://img.shields.io/github/v/release/suvojeet-sengupta/jiosaavn-api)
 
-An Unofficial API for downloading high-quality songs, albums, playlists, and more from [JioSaavn](https://jiosaavn.com).
+An Unofficial API for downloading high-quality songs, albums, playlists, and more from [JioSaavn](https://jiosaavn.com). Fully migrated to Rust for superior performance and memory safety.
 
 ## 📚 Documentation
 
@@ -15,6 +15,8 @@ For a detailed list of changes, see the [CHANGELOG](CHANGELOG.md).
 
 ## 🔌 Running Locally
 
+### Using Docker (Recommended)
+
 1. Clone the repository:
 
    ```sh
@@ -22,42 +24,34 @@ For a detailed list of changes, see the [CHANGELOG](CHANGELOG.md).
    cd jiosaavn-api
    ```
 
-### Using Docker
+2. Start the application:
 
-```sh
-docker-compose up
-```
+   ```sh
+   docker-compose up
+   ```
 
-OR
+---
 
 ### Manually
 
 > [!NOTE]
-> You need `Bun(1.0.29+)` or `Node.js(v20+)`
+> You need the [Rust toolchain](https://www.rust-lang.org/tools/install) installed.
 
-2. Install the required dependencies:
-
-   ```sh
-   bun install
-   ```
-
-3. Launch the development server:
+1. Clone the repository:
 
    ```sh
-   bun run dev
+   git clone https://github.com/suvojeet-sengupta/jiosaavn-api
+   cd jiosaavn-api
    ```
 
-## ☁️ Deploying Your Own Instance
+2. Launch the development server:
 
-JioSaavn API can be deployed to either Cloudflare Workers or Vercel. Below are the instructions for deploying to each platform.
+   ```sh
+   cd rust
+   cargo run
+   ```
 
-### Cloudflare Workers
-
-[![Deploy with Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/suvojeet-sengupta/jiosaavn-api)
-
-### Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/suvojeet-sengupta/jiosaavn-api)
+The server will start on `http://0.0.0.0:3000`.
 
 ## 📜 License
 

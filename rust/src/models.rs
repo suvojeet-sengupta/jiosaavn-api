@@ -63,18 +63,6 @@ pub struct Album {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Playlist {
-    pub id: String,
-    pub name: String,
-    pub url: String,
-    pub language: Option<String>,
-    pub r#type: String,
-    pub description: Option<String>,
-    pub image: Vec<DownloadLink>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Lyrics {
     pub lyrics: String,
     pub copyright: Option<String>,

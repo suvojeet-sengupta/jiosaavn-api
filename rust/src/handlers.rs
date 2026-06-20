@@ -117,18 +117,6 @@ fn parse_album(v: &Value) -> Album {
     }
 }
 
-fn parse_playlist_item(v: &Value) -> Playlist {
-    Playlist {
-        id: str_val(&v["id"]),
-        name: str_val(&v["title"]),
-        url: str_val(&v["perma_url"]),
-        language: opt_str_val(&v["language"]),
-        r#type: str_val(&v["type"]),
-        description: opt_str_val(&v["description"]),
-        image: create_image_links(&str_val(&v["image"])),
-    }
-}
-
 // --- Handler Logic ---
 
 #[derive(Deserialize)]

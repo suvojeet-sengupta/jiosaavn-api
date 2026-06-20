@@ -8,26 +8,30 @@ on:
       - main
 
 jobs:
-  relase:
+  test-and-build:
     name: Run tests and build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Cache Dependencies
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo Dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.bun
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: ${{ runner.os }}-bun-
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - run: bun install
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            rust/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
       - name: Run Tests
-        run: bun run test
+        run: cd rust && cargo test
 
       - name: Try to build
-        run: bun run build
+        run: cd rust && cargo build --release
