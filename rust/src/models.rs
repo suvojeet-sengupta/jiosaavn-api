@@ -132,6 +132,16 @@ pub struct PlaylistSearchItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct Playlist {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub image: Vec<DownloadLink>,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     pub albums: SearchResultCategory<AlbumSearchItem>,
     pub songs: SearchResultCategory<SongSearchItem>,

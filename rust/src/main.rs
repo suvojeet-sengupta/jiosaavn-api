@@ -29,6 +29,8 @@ async fn main() {
         .route("/api/search", get(handlers::search_all))
         .route("/api/search/songs", get(handlers::search_songs))
         .route("/api/search/artists", get(handlers::search_artists))
+        .route("/api/search/albums", get(handlers::search_albums))
+        .route("/api/search/playlists", get(handlers::search_playlists))
         .route("/api/songs", get(handlers::get_songs))
         .route("/api/songs/:id", get(handlers::get_song_by_id))
         .route("/api/songs/:id/suggestions", get(handlers::get_song_suggestions))

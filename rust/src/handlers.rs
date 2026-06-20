@@ -117,6 +117,25 @@ fn parse_album(v: &Value) -> Album {
     }
 }
 
+fn parse_playlist(v: &Value) -> Playlist {
+    Playlist {
+        id: str_val(&v["id"]),
+        name: if !str_val(&v["title"]).is_empty() {
+            str_val(&v["title"])
+        } else if !str_val(&v["listname"]).is_empty() {
+            str_val(&v["listname"])
+        } else {
+            str_val(&v["name"])
+        },
+        url: if !str_val(&v["perma_url"]).is_empty() {
+            str_val(&v["perma_url"])
+        } else {
+            str_val(&v["url"])
+        },
+        image: create_image_links(&str_val(&v["image"])),
+    }
+}
+
 // --- Handler Logic ---
 
 #[derive(Deserialize)]
@@ -481,3 +500,44 @@ pub async fn get_artist_details(
         },
     }))
 }
+
+pub async fn search_albums(
+    Query(query): Query<CategorySearchQuery>,
+) -> Result<Json<ApiResponse<SearchResultCategory<Album>>>, String> {
+    let mut params = HashMap::new();
+    params.insert("p".to_string(), query.page.unwrap_or(1).to_string());
+    params.insert("n".to_string(), query.limit.unwrap_or(20).to_string());
+    params.insert("q".to_string(), query.query);
+
+    let raw = use_fetch("search.getAlbumResults", params, None).await?;
+    let results = raw["results"]
+        .as_array()
+        .map(|arr| arr.iter().map(parse_album).collect())
+        .unwrap_or_default();
+
+    Ok(Json(ApiResponse {
+        success: true,
+        data: SearchResultCategory { results, position: 1 },
+    }))
+}
+
+pub async fn search_playlists(
+    Query(query): Query<CategorySearchQuery>,
+) -> Result<Json<ApiResponse<SearchResultCategory<Playlist>>>, String> {
+    let mut params = HashMap::new();
+    params.insert("p".to_string(), query.page.unwrap_or(1).to_string());
+    params.insert("n".to_string(), query.limit.unwrap_or(20).to_string());
+    params.insert("q".to_string(), query.query);
+
+    let raw = use_fetch("search.getPlaylistResults", params, None).await?;
+    let results = raw["results"]
+        .as_array()
+        .map(|arr| arr.iter().map(parse_playlist).collect())
+        .unwrap_or_default();
+
+    Ok(Json(ApiResponse {
+        success: true,
+        data: SearchResultCategory { results, position: 1 },
+    }))
+}
+
