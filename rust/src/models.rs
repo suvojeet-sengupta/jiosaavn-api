@@ -1,0 +1,159 @@
+use crate::crypto::DownloadLink;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Song {
+    pub id: String,
+    pub name: String,
+    pub r#type: String,
+    pub year: Option<String>,
+    pub release_date: Option<String>,
+    pub duration: Option<i64>,
+    pub label: Option<String>,
+    pub explicit_content: bool,
+    pub play_count: Option<i64>,
+    pub language: String,
+    pub has_lyrics: bool,
+    pub lyrics_id: Option<String>,
+    pub url: String,
+    pub copyright: Option<String>,
+    pub album: AlbumInfo,
+    pub artists: ArtistGroup,
+    pub image: Vec<DownloadLink>,
+    pub download_url: Vec<DownloadLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlbumInfo {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtistGroup {
+    pub primary: Vec<Artist>,
+    pub featured: Vec<Artist>,
+    pub all: Vec<Artist>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Artist {
+    pub id: String,
+    pub name: String,
+    pub role: String,
+    pub r#type: String,
+    pub image: Vec<DownloadLink>,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Album {
+    pub id: String,
+    pub name: String,
+    pub year: Option<String>,
+    pub url: String,
+    pub image: Vec<DownloadLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Playlist {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub language: Option<String>,
+    pub r#type: String,
+    pub description: Option<String>,
+    pub image: Vec<DownloadLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Lyrics {
+    pub lyrics: String,
+    pub copyright: Option<String>,
+    pub snippet: Option<String>,
+}
+
+// Search result categories
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResultCategory<T> {
+    pub results: Vec<T>,
+    pub position: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SongSearchItem {
+    pub id: String,
+    pub title: String,
+    pub image: Vec<DownloadLink>,
+    pub album: String,
+    pub url: String,
+    pub r#type: String,
+    pub description: String,
+    pub primary_artists: String,
+    pub singers: String,
+    pub language: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlbumSearchItem {
+    pub id: String,
+    pub title: String,
+    pub image: Vec<DownloadLink>,
+    pub artist: String,
+    pub url: String,
+    pub r#type: String,
+    pub description: String,
+    pub year: String,
+    pub language: String,
+    pub song_ids: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtistSearchItem {
+    pub id: String,
+    pub title: String,
+    pub image: Vec<DownloadLink>,
+    pub r#type: String,
+    pub description: String,
+    pub position: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaylistSearchItem {
+    pub id: String,
+    pub title: String,
+    pub image: Vec<DownloadLink>,
+    pub url: String,
+    pub language: String,
+    pub r#type: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResponse {
+    pub albums: SearchResultCategory<AlbumSearchItem>,
+    pub songs: SearchResultCategory<SongSearchItem>,
+    pub artists: SearchResultCategory<ArtistSearchItem>,
+    pub playlists: SearchResultCategory<PlaylistSearchItem>,
+    pub top_query: SearchResultCategory<SongSearchItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiResponse<T> {
+    pub success: bool,
+    pub data: T,
+}
