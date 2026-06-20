@@ -447,6 +447,7 @@ pub async fn get_playlist_details(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ArtistQuery {
     pub page: Option<i32>,
     pub song_count: Option<i32>,
