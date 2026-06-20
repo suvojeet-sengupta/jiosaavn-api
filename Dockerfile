@@ -1,33 +1,26 @@
-FROM oven/bun AS base
+FROM rust:alpine AS builder
 
-WORKDIR /user/app
+RUN apk add --no-cache musl-dev
 
-COPY package.json .
+WORKDIR /usr/src/app
 
-COPY bun.lockb .
+COPY rust/Cargo.toml rust/Cargo.lock ./
+# Create a dummy main to cache built dependencies
+RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
 
-RUN bun install --frozen-lockfile --production
+# Now copy the actual source and compile
+COPY rust/src ./src
+RUN touch src/main.rs && cargo build --release
 
-# Making build file
-FROM base AS build
+FROM alpine:latest
 
-WORKDIR /user/app
+WORKDIR /app
 
-COPY . .
-
-RUN bun install --frozen-lockfile
-
-RUN bun run build
-
-# Production
-FROM oven/bun:alpine AS production
-
-WORKDIR /user/app
-
-COPY --from=build /user/app/dist ./dist
-COPY --from=base /user/app/node_modules ./node_modules
-COPY --from=base /user/app/package.json ./package.json
+COPY --from=builder /usr/src/app/target/release/jiosaavn-api-rust ./jiosaavn-api-rust
 
 EXPOSE 3000
 
-CMD ["bun", "run", "start"]
+ENV PORT=3000
+ENV RUST_LOG=info
+
+CMD ["./jiosaavn-api-rust"]
