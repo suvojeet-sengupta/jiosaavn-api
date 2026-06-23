@@ -110,13 +110,18 @@ async fn log_request(method: String, uri: String, status: u16, duration: std::ti
     }
     
     let log_line = format!(
-        "[{}] {} {} {} {}ms\n",
+        "[{}] {} {} {} {}ms",
         timestamp,
         method,
         uri,
         status,
         duration.as_millis()
     );
+    
+    // Print to stdout for console logs (e.g. docker compose logs)
+    println!("{}", log_line);
+    
+    let file_log_line = format!("{}\n", log_line);
     
     match OpenOptions::new()
         .create(true)
@@ -125,7 +130,7 @@ async fn log_request(method: String, uri: String, status: u16, duration: std::ti
         .await
     {
         Ok(mut file) => {
-            if let Err(e) = file.write_all(log_line.as_bytes()).await {
+            if let Err(e) = file.write_all(file_log_line.as_bytes()).await {
                 eprintln!("Failed to write request log: {}", e);
             }
         }
