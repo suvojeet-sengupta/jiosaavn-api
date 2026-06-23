@@ -12,6 +12,7 @@ use axum::{
     Router,
 };
 use chrono::{Duration, Local};
+use once_cell::sync::Lazy;
 use std::net::SocketAddr;
 use std::time::Instant;
 use tokio::fs::{create_dir_all, OpenOptions};
@@ -31,9 +32,21 @@ async fn main() {
     let cors = CorsLayer::permissive();
 
     // 3. Define routes
+    let dist_dir = if std::path::Path::new("./dist").exists() {
+        "./dist".to_string()
+    } else {
+        "../frontend/dist".to_string()
+    };
+
     let app = Router::new()
         // API Base Info
         .route("/", get(home_handler))
+        // API Docs / Playground
+        .nest_service(
+            "/docs",
+            tower_http::services::ServeDir::new(&dist_dir)
+                .fallback(tower_http::services::ServeFile::new(format!("{}/index.html", dist_dir))),
+        )
         // API Endpoints
         .route("/api/search", get(handlers::search_all))
         .route("/api/search/songs", get(handlers::search_songs))
@@ -81,6 +94,85 @@ async fn not_found_handler() -> impl IntoResponse {
     )
 }
 
+struct LogMessage {
+    timestamp: String,
+    method: String,
+    uri: String,
+    status: u16,
+    duration_ms: u128,
+}
+
+static LOG_CHANNEL: Lazy<tokio::sync::mpsc::UnboundedSender<LogMessage>> = Lazy::new(|| {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<LogMessage>();
+    
+    tokio::spawn(async move {
+        let log_dir = "logs";
+        if let Err(e) = create_dir_all(log_dir).await {
+            eprintln!("Failed to create logs directory: {}", e);
+            return;
+        }
+
+        let mut current_date = String::new();
+        let mut current_file: Option<tokio::io::BufWriter<tokio::fs::File>> = None;
+
+        while let Some(msg) = rx.recv().await {
+            let log_line = format!(
+                "[{}] {} {} {} {}ms",
+                msg.timestamp,
+                msg.method,
+                msg.uri,
+                msg.status,
+                msg.duration_ms
+            );
+            
+            // Print to stdout
+            println!("{}", log_line);
+
+            // Determine log file path based on date of timestamp
+            let date_str = if msg.timestamp.len() >= 10 {
+                &msg.timestamp[0..10]
+            } else {
+                "unknown"
+            };
+
+            // If date changed, rotate file
+            if date_str != current_date || current_file.is_none() {
+                current_date = date_str.to_string();
+                let log_path = format!("{}/requests_{}.log", log_dir, current_date);
+                
+                // Flush and close previous file if it exists
+                if let Some(mut file) = current_file.take() {
+                    let _ = file.flush().await;
+                }
+
+                match OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&log_path)
+                    .await
+                {
+                    Ok(file) => {
+                        current_file = Some(tokio::io::BufWriter::new(file));
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to open log file {}: {}", log_path, e);
+                    }
+                }
+            }
+
+            if let Some(ref mut file) = current_file {
+                let file_log_line = format!("{}\n", log_line);
+                if let Err(e) = file.write_all(file_log_line.as_bytes()).await {
+                    eprintln!("Failed to write request log: {}", e);
+                }
+                let _ = file.flush().await;
+            }
+        }
+    });
+    
+    tx
+});
+
 async fn logging_middleware(req: Request, next: Next) -> Response {
     let start = Instant::now();
     let method = req.method().to_string();
@@ -91,53 +183,18 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
     let duration = start.elapsed();
     let status = response.status().as_u16();
     
-    log_request(method, uri, status, duration).await;
-    
-    response
-}
-
-async fn log_request(method: String, uri: String, status: u16, duration: std::time::Duration) {
     let now = Local::now();
-    let date_str = now.format("%Y-%m-%d").to_string();
     let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
     
-    let log_dir = "logs";
-    let log_path = format!("{}/requests_{}.log", log_dir, date_str);
-    
-    if let Err(e) = create_dir_all(log_dir).await {
-        eprintln!("Failed to create logs directory: {}", e);
-        return;
-    }
-    
-    let log_line = format!(
-        "[{}] {} {} {} {}ms",
+    let _ = LOG_CHANNEL.send(LogMessage {
         timestamp,
         method,
         uri,
         status,
-        duration.as_millis()
-    );
+        duration_ms: duration.as_millis(),
+    });
     
-    // Print to stdout for console logs (e.g. docker compose logs)
-    println!("{}", log_line);
-    
-    let file_log_line = format!("{}\n", log_line);
-    
-    match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&log_path)
-        .await
-    {
-        Ok(mut file) => {
-            if let Err(e) = file.write_all(file_log_line.as_bytes()).await {
-                eprintln!("Failed to write request log: {}", e);
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to open log file {}: {}", log_path, e);
-        }
-    }
+    response
 }
 
 async fn clean_old_logs_task() {

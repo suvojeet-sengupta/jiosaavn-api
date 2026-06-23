@@ -1,3 +1,10 @@
+FROM node:18-alpine AS frontend-builder
+WORKDIR /usr/src/app
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
 FROM rust:alpine AS builder
 
 RUN apk add --no-cache musl-dev
@@ -17,6 +24,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /usr/src/app/target/release/jiosaavn-api-rust ./jiosaavn-api-rust
+COPY --from=frontend-builder /usr/src/app/dist ./dist
 
 EXPOSE 3000
 

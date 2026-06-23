@@ -155,3 +155,40 @@ pub struct ApiResponse<T> {
     pub success: bool,
     pub data: T,
 }
+
+#[derive(Debug, Clone)]
+pub enum AppError {
+    BadRequest(String),
+    NotFound(String),
+    Internal(String),
+}
+
+#[derive(Serialize)]
+struct ErrorResponse {
+    success: bool,
+    message: String,
+}
+
+impl axum::response::IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        let (status, message) = match self {
+            AppError::BadRequest(msg) => (axum::http::StatusCode::BAD_REQUEST, msg),
+            AppError::NotFound(msg) => (axum::http::StatusCode::NOT_FOUND, msg),
+            AppError::Internal(msg) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, msg),
+        };
+
+        let body = axum::Json(ErrorResponse {
+            success: false,
+            message,
+        });
+
+        (status, body).into_response()
+    }
+}
+
+impl From<String> for AppError {
+    fn from(err: String) -> Self {
+        AppError::Internal(err)
+    }
+}
+

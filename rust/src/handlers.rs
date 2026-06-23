@@ -146,9 +146,9 @@ pub struct SongsQuery {
 
 pub async fn get_songs(
     Query(query): Query<SongsQuery>,
-) -> Result<Json<ApiResponse<Vec<Song>>>, String> {
+) -> Result<Json<ApiResponse<Vec<Song>>>, AppError> {
     if query.ids.is_none() && query.link.is_none() {
-        return Err("Either 'ids' or 'link' query parameter is required".to_string());
+        return Err(AppError::BadRequest("Either 'ids' or 'link' query parameter is required".to_string()));
     }
 
     let mut params = HashMap::new();
@@ -159,7 +159,7 @@ pub async fn get_songs(
             .nth(1)
             .and_then(|s| s.split('/').nth(1))
             .and_then(|s| s.split('?').next())
-            .ok_or_else(|| "Invalid JioSaavn song link".to_string())?;
+            .ok_or_else(|| AppError::BadRequest("Invalid JioSaavn song link".to_string()))?;
         params.insert("token".to_string(), token.to_string());
         params.insert("type".to_string(), "song".to_string());
         "webapi.get"
@@ -194,7 +194,7 @@ pub async fn get_songs(
     };
 
     if songs_list.is_empty() {
-        return Err("Song not found".to_string());
+        return Err(AppError::NotFound("Song not found".to_string()));
     }
 
     Ok(Json(ApiResponse { success: true, data: songs_list }))
@@ -202,7 +202,7 @@ pub async fn get_songs(
 
 pub async fn get_song_by_id(
     AxumPath(id): AxumPath<String>,
-) -> Result<Json<ApiResponse<Vec<Song>>>, String> {
+) -> Result<Json<ApiResponse<Vec<Song>>>, AppError> {
     let mut params = HashMap::new();
     params.insert("pids".to_string(), id);
 
@@ -217,7 +217,7 @@ pub async fn get_song_by_id(
         });
 
     if songs.is_empty() {
-        return Err("Song not found".to_string());
+        return Err(AppError::NotFound("Song not found".to_string()));
     }
 
     Ok(Json(ApiResponse { success: true, data: songs }))
@@ -231,7 +231,7 @@ pub struct SuggestionsQuery {
 pub async fn get_song_suggestions(
     AxumPath(id): AxumPath<String>,
     Query(query): Query<SuggestionsQuery>,
-) -> Result<Json<ApiResponse<Vec<Song>>>, String> {
+) -> Result<Json<ApiResponse<Vec<Song>>>, AppError> {
     let limit = query.limit.unwrap_or_else(|| "10".to_string());
     
     // First, we need to create an entity station
@@ -240,7 +240,7 @@ pub async fn get_song_suggestions(
     station_params.insert("entity_type".to_string(), "queue".to_string());
     
     let station_raw = use_fetch("webradio.createEntityStation", station_params, None).await?;
-    let station_id = station_raw["stationid"].as_str().ok_or_else(|| "Failed to create station".to_string())?;
+    let station_id = station_raw["stationid"].as_str().ok_or_else(|| AppError::Internal("Failed to create station".to_string()))?;
 
     // Now, get songs from the station
     let mut radio_params = HashMap::new();
@@ -264,12 +264,12 @@ pub async fn get_song_suggestions(
 
 pub async fn get_song_lyrics(
     AxumPath(id): AxumPath<String>,
-) -> Result<Json<ApiResponse<Lyrics>>, String> {
+) -> Result<Json<ApiResponse<Lyrics>>, AppError> {
     let mut params = HashMap::new();
     params.insert("lyrics_id".to_string(), id);
 
     let raw = use_fetch("lyrics.getLyrics", params, None).await?;
-    let lyrics = raw["lyrics"].as_str().ok_or_else(|| "Lyrics not found".to_string())?;
+    let lyrics = raw["lyrics"].as_str().ok_or_else(|| AppError::NotFound("Lyrics not found".to_string()))?;
 
     Ok(Json(ApiResponse {
         success: true,
@@ -298,7 +298,7 @@ fn parse_category<T>(cat: &Value, mapper: impl Fn(&Value) -> T) -> SearchResultC
 
 pub async fn search_all(
     Query(query): Query<SearchQuery>,
-) -> Result<Json<ApiResponse<SearchResponse>>, String> {
+) -> Result<Json<ApiResponse<SearchResponse>>, AppError> {
     let mut params = HashMap::new();
     params.insert("query".to_string(), query.query);
 
@@ -370,7 +370,7 @@ pub struct CategorySearchQuery {
 
 pub async fn search_songs(
     Query(query): Query<CategorySearchQuery>,
-) -> Result<Json<ApiResponse<SearchResultCategory<Song>>>, String> {
+) -> Result<Json<ApiResponse<SearchResultCategory<Song>>>, AppError> {
     let mut params = HashMap::new();
     params.insert("p".to_string(), query.page.unwrap_or(1).to_string());
     params.insert("n".to_string(), query.limit.unwrap_or(20).to_string());
@@ -390,7 +390,7 @@ pub async fn search_songs(
 
 pub async fn search_artists(
     Query(query): Query<CategorySearchQuery>,
-) -> Result<Json<ApiResponse<SearchResultCategory<Artist>>>, String> {
+) -> Result<Json<ApiResponse<SearchResultCategory<Artist>>>, AppError> {
     let mut params = HashMap::new();
     params.insert("p".to_string(), query.page.unwrap_or(1).to_string());
     params.insert("n".to_string(), query.limit.unwrap_or(20).to_string());
@@ -415,7 +415,7 @@ pub struct IdQuery {
 
 pub async fn get_album_details(
     Query(query): Query<IdQuery>,
-) -> Result<Json<ApiResponse<Vec<Song>>>, String> {
+) -> Result<Json<ApiResponse<Vec<Song>>>, AppError> {
     let mut params = HashMap::new();
     params.insert("albumid".to_string(), query.id);
 
@@ -430,7 +430,7 @@ pub async fn get_album_details(
 
 pub async fn get_playlist_details(
     Query(query): Query<IdQuery>,
-) -> Result<Json<ApiResponse<SearchResultCategory<Song>>>, String> {
+) -> Result<Json<ApiResponse<SearchResultCategory<Song>>>, AppError> {
     let mut params = HashMap::new();
     params.insert("listid".to_string(), query.id);
 
@@ -469,7 +469,7 @@ pub struct ArtistDetail {
 pub async fn get_artist_details(
     AxumPath(id): AxumPath<String>,
     Query(query): Query<ArtistQuery>,
-) -> Result<Json<ApiResponse<ArtistDetail>>, String> {
+) -> Result<Json<ApiResponse<ArtistDetail>>, AppError> {
     let mut params = HashMap::new();
     params.insert("artistId".to_string(), id);
     params.insert("page".to_string(), query.page.unwrap_or(1).to_string());
@@ -504,7 +504,7 @@ pub async fn get_artist_details(
 
 pub async fn search_albums(
     Query(query): Query<CategorySearchQuery>,
-) -> Result<Json<ApiResponse<SearchResultCategory<Album>>>, String> {
+) -> Result<Json<ApiResponse<SearchResultCategory<Album>>>, AppError> {
     let mut params = HashMap::new();
     params.insert("p".to_string(), query.page.unwrap_or(1).to_string());
     params.insert("n".to_string(), query.limit.unwrap_or(20).to_string());
@@ -524,7 +524,7 @@ pub async fn search_albums(
 
 pub async fn search_playlists(
     Query(query): Query<CategorySearchQuery>,
-) -> Result<Json<ApiResponse<SearchResultCategory<Playlist>>>, String> {
+) -> Result<Json<ApiResponse<SearchResultCategory<Playlist>>>, AppError> {
     let mut params = HashMap::new();
     params.insert("p".to_string(), query.page.unwrap_or(1).to_string());
     params.insert("n".to_string(), query.limit.unwrap_or(20).to_string());
