@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JioSaavn API Server Logs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0b0f19;
+            --bg-surface: #151d30;
+            --bg-element: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.15);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --accent: #06b6d4;
+            --border: #334155;
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Password Modal Styling */
+        #login-card {
+            background-color: var(--bg-surface);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #login-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        #login-card p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .input-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-element);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        #error-msg {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        /* Logs Dashboard Layout */
+        #dashboard {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            grid-template-columns: 280px 1fr;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Sidebar */
+        aside {
+            background-color: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar-header .tag {
+            font-size: 0.7rem;
+            background-color: var(--primary-glow);
+            color: var(--primary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+
+        .file-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .file-list-container h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 0.65rem 0.85rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-bottom: 0.35rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            transition: all 0.15s ease;
+            font-family: var(--font-mono);
+            border: 1px solid transparent;
+        }
+
+        .file-item:hover {
+            background-color: var(--bg-element);
+            color: var(--text-main);
+        }
+
+        .file-item.active {
+            background-color: var(--primary-glow);
+            color: var(--primary);
+            border-color: rgba(59, 130, 246, 0.3);
+            font-weight: 500;
+        }
+
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Main Console Panel */
+        main {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-base);
+        }
+
+        header {
+            background-color: var(--bg-surface);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .controls-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            padding: 0.5rem 1rem 0.5rem 2rem;
+            background-color: var(--bg-element);
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            color: var(--text-main);
+            font-size: 0.875rem;
+            width: 240px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            width: 14px;
+            height: 14px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-label input {
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-element);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.5rem 0.85rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: all 0.15s ease;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border);
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.65rem 1.5rem;
+            display: flex;
+            gap: 2.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .stat-item strong {
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        /* Console Output Container */
+        .console-container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            background-color: #060913;
+        }
+
+        .console-output {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #d1d5db;
+        }
+
+        /* Highlighting Classes */
+        .log-line {
+            display: block;
+            border-bottom: 1px solid #111827;
+            padding: 0.15rem 0;
+            transition: background-color 0.1s ease;
+        }
+
+        .log-line:hover {
+            background-color: #111827;
+        }
+
+        .log-time {
+            color: #6b7280;
+            margin-right: 0.5rem;
+        }
+
+        .method-get { color: #3b82f6; font-weight: 600; }
+        .method-post { color: #a855f7; font-weight: 600; }
+        .status-2xx { color: var(--success); }
+        .status-3xx { color: var(--warning); }
+        .status-4xx { color: var(--danger); }
+        .status-5xx { color: #f43f5e; font-weight: bold; }
+        
+        .log-cache-hit {
+            color: var(--accent);
+            background-color: rgba(6, 182, 212, 0.08);
+            padding: 0 0.25rem;
+            border-radius: 0.15rem;
+        }
+        
+        .log-cache-miss {
+            color: var(--warning);
+            background-color: rgba(245, 158, 11, 0.08);
+            padding: 0 0.25rem;
+            border-radius: 0.15rem;
+        }
+
+        .log-cache-expired {
+            color: #e2e8f0;
+            background-color: rgba(226, 232, 240, 0.08);
+            padding: 0 0.25rem;
+            border-radius: 0.15rem;
+        }
+
+        .log-upstream {
+            color: #10b981;
+        }
+
+        .duration-slow {
+            color: var(--warning);
+            font-weight: 500;
+        }
+
+        .duration-critical {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-base);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN CARD -->
+    <div id="login-card">
+        <h2>Logs Access Portal</h2>
+        <p>Enter the administrator credentials to view real-time server activity.</p>
+        
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="input-group">
+                <label for="password">Server Password</label>
+                <input type="password" id="password" class="input-control" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn">Authenticate</button>
+            <div id="error-msg">Incorrect password. Please try again.</div>
+        </form>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboard">
+        <aside>
+            <div class="sidebar-header">
+                <h1>JioSaavn API <span class="tag">Logs</span></h1>
+            </div>
+            
+            <div class="file-list-container">
+                <h3>Log Files</h3>
+                <div id="file-list">
+                    <!-- File list loaded dynamically -->
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="btn-secondary" style="width: 100%; justify-content: center;" onclick="logout()">
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <main>
+            <header>
+                <div class="controls-left">
+                    <span id="active-filename" style="font-family: var(--font-mono); font-weight: 600; font-size: 0.95rem;"></span>
+                    <button class="btn-secondary" onclick="loadActiveLogFile()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        Refresh
+                    </button>
+                </div>
+                
+                <div class="controls-right">
+                    <div class="search-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="search-filter" class="search-input" placeholder="Filter logs (e.g. GET, 200, Key)..." oninput="applyFilter()">
+                    </div>
+
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="auto-refresh" checked onchange="toggleAutoRefresh()">
+                        Auto-Refresh
+                    </label>
+
+                    <button class="btn-secondary" onclick="downloadLogs()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Download
+                    </button>
+                </div>
+            </header>
+
+            <!-- STATS BAR -->
+            <div class="stats-bar">
+                <div class="stat-item">Total Requests: <strong id="stat-total">0</strong></div>
+                <div class="stat-item">Cache Hit Rate: <strong id="stat-cache-rate">0%</strong></div>
+                <div class="stat-item">Avg Latency: <strong id="stat-latency">0ms</strong></div>
+                <div class="stat-item">Error Rate: <strong id="stat-errors">0%</strong></div>
+            </div>
+
+            <!-- CONSOLE CONTAINER -->
+            <div class="console-container" id="console-scroll">
+                <div class="console-output" id="log-output">Select a log file on the left side to get started.</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let logsPassword = localStorage.getItem('logs_password') || '';
+        let activeFile = '';
+        let refreshInterval = null;
+        let originalLogLines = [];
+
+        // Check if already authenticated on load
+        if (logsPassword) {
+            testAuthAndInitialize();
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const passwordInput = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+            
+            errorMsg.style.display = 'none';
+
+            const success = await loadFileList(passwordInput);
+            if (success) {
+                logsPassword = passwordInput;
+                localStorage.setItem('logs_password', logsPassword);
+                
+                document.getElementById('login-card').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+                
+                // Set default auto-refresh
+                toggleAutoRefresh();
+            } else {
+                errorMsg.style.display = 'block';
+                document.getElementById('password').value = '';
+            }
+        }
+
+        async function testAuthAndInitialize() {
+            const success = await loadFileList(logsPassword);
+            if (success) {
+                document.getElementById('login-card').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+                toggleAutoRefresh();
+            } else {
+                localStorage.removeItem('logs_password');
+                logsPassword = '';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('logs_password');
+            logsPassword = '';
+            location.reload();
+        }
+
+        async function loadFileList(pwd) {
+            try {
+                const response = await fetch('/api/logs/files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwd })
+                });
+
+                if (!response.ok) return false;
+
+                const result = await response.json();
+                if (!result.success) return false;
+
+                const files = result.data || [];
+                const listContainer = document.getElementById('file-list');
+                listContainer.innerHTML = '';
+
+                if (files.length === 0) {
+                    listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem;">No log files found</div>';
+                    return true;
+                }
+
+                files.forEach((file, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerText = file;
+                    item.onclick = () => selectFile(file, item);
+                    listContainer.appendChild(item);
+
+                    // Auto select the first file (usually the latest one)
+                    if (index === 0 && !activeFile) {
+                        selectFile(file, item);
+                    } else if (file === activeFile) {
+                        item.classList.add('active');
+                    }
+                });
+
+                return true;
+            } catch (err) {
+                console.error("Error loading file list:", err);
+                return false;
+            }
+        }
+
+        function selectFile(filename, element) {
+            // Remove active status from all
+            document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+            
+            activeFile = filename;
+            element.classList.add('active');
+            document.getElementById('active-filename').innerText = filename;
+
+            loadActiveLogFile();
+        }
+
+        async function loadActiveLogFile() {
+            if (!activeFile) return;
+
+            try {
+                const response = await fetch('/api/logs/view', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: logsPassword, file_name: activeFile })
+                });
+
+                if (!response.ok) {
+                    logout();
+                    return;
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    const content = result.data || '';
+                    originalLogLines = content.split('\n').filter(line => line.trim() !== '');
+                    applyFilter();
+                } else {
+                    document.getElementById('log-output').innerText = 'Failed to load file content.';
+                }
+            } catch (err) {
+                console.error("Error loading log content:", err);
+            }
+        }
+
+        function applyFilter() {
+            const query = document.getElementById('search-filter').value.toLowerCase().trim();
+            const outputContainer = document.getElementById('log-output');
+            
+            const isScrollAtBottom = checkIsScrollAtBottom();
+
+            let matchedLines = originalLogLines;
+            if (query) {
+                matchedLines = originalLogLines.filter(line => line.toLowerCase().includes(query));
+            }
+
+            // Calculate stats on all parsed lines
+            calculateStats(originalLogLines);
+
+            if (matchedLines.length === 0) {
+                outputContainer.innerHTML = '<span style="color: var(--text-muted);">No matching log entries found.</span>';
+                return;
+            }
+
+            const formattedHtml = matchedLines.map(line => formatLogLine(line)).join('');
+            outputContainer.innerHTML = formattedHtml;
+
+            if (isScrollAtBottom) {
+                scrollToBottom();
+            }
+        }
+
+        function formatLogLine(line) {
+            // Match pattern: [2026-06-27 18:15:30] GET /api/songs/123 200 45ms
+            // Match pattern 2: [CACHE HIT] Key: ...
+            // Match pattern 3: [CACHE MISS] Fetching ...
+            
+            let lineClass = "log-line";
+            
+            if (line.includes("[CACHE HIT]")) {
+                return `<span class="${lineClass} log-cache-hit">${escapeHtml(line)}</span>`;
+            }
+            if (line.includes("[CACHE MISS]")) {
+                return `<span class="${lineClass} log-cache-miss">${escapeHtml(line)}</span>`;
+            }
+            if (line.includes("[CACHE EXPIRED]")) {
+                return `<span class="${lineClass} log-cache-expired">${escapeHtml(line)}</span>`;
+            }
+            if (line.includes("[UPSTREAM FETCH SUCCESS]")) {
+                return `<span class="${lineClass} log-upstream">${escapeHtml(line)}</span>`;
+            }
+
+            // Parse request log
+            const parts = line.split(' ');
+            if (parts.length >= 5) {
+                const time = parts[0] + ' ' + parts[1]; // [YYYY-MM-DD HH:MM:SS]
+                const method = parts[2];
+                const uri = parts[3];
+                const status = parts[4];
+                const duration = parts[5]; // e.g. 45ms
+
+                let methodSpan = `<span class="method-${method.toLowerCase()}">${escapeHtml(method)}</span>`;
+                
+                let statusGroup = status[0];
+                let statusSpan = `<span class="status-${statusGroup}xx">${escapeHtml(status)}</span>`;
+
+                let durationSpan = '';
+                if (duration) {
+                    const durMs = parseInt(duration);
+                    if (durMs > 1000) {
+                        durationSpan = `<span class="duration-critical">${escapeHtml(duration)}</span>`;
+                    } else if (durMs > 300) {
+                        durationSpan = `<span class="duration-slow">${escapeHtml(duration)}</span>`;
+                    } else {
+                        durationSpan = `<span style="color: #6b7280">${escapeHtml(duration)}</span>`;
+                    }
+                }
+
+                return `<span class="${lineClass}"><span class="log-time">${escapeHtml(time)}</span> ${methodSpan} <span style="color: #e5e7eb">${escapeHtml(uri)}</span> ${statusSpan} ${durationSpan}</span>`;
+            }
+
+            return `<span class="${lineClass}">${escapeHtml(line)}</span>`;
+        }
+
+        function calculateStats(lines) {
+            let totalRequests = 0;
+            let cacheHits = 0;
+            let totalLatency = 0;
+            let latencyCount = 0;
+            let errors = 0;
+
+            lines.forEach(line => {
+                // Check for cache hits/misses inside api requests
+                if (line.includes("[CACHE HIT]")) {
+                    cacheHits++;
+                }
+
+                // Check for request log patterns
+                const parts = line.split(' ');
+                if (parts.length >= 5 && parts[0].startsWith('[')) {
+                    totalRequests++;
+                    
+                    // Status error check (4xx and 5xx)
+                    const status = parts[4];
+                    if (status.startsWith('4') || status.startsWith('5')) {
+                        errors++;
+                    }
+
+                    // Latency check
+                    const duration = parts[5];
+                    if (duration && duration.endsWith('ms')) {
+                        const ms = parseInt(duration);
+                        if (!isNaN(ms)) {
+                            totalLatency += ms;
+                            latencyCount++;
+                        }
+                    }
+                }
+            });
+
+            // Adjust cache hits relative to total requests that require upstream (estimate)
+            // Or count CACHE HIT + CACHE MISS to get accurate hit rate on fetches
+            let cacheMisses = lines.filter(l => l.includes("[CACHE MISS]")).length;
+            let hitRate = 0;
+            if (cacheHits + cacheMisses > 0) {
+                hitRate = Math.round((cacheHits / (cacheHits + cacheMisses)) * 100);
+            }
+
+            const avgLatency = latencyCount > 0 ? Math.round(totalLatency / latencyCount) : 0;
+            const errorRate = totalRequests > 0 ? Math.round((errors / totalRequests) * 100) : 0;
+
+            document.getElementById('stat-total').innerText = totalRequests;
+            document.getElementById('stat-cache-rate').innerText = hitRate + '%';
+            document.getElementById('stat-latency').innerText = avgLatency + 'ms';
+            document.getElementById('stat-errors').innerText = errorRate + '%';
+        }
+
+        function toggleAutoRefresh() {
+            const checked = document.getElementById('auto-refresh').checked;
+            if (checked) {
+                if (!refreshInterval) {
+                    refreshInterval = setInterval(() => {
+                        loadFileList(logsPassword);
+                        loadActiveLogFile();
+                    }, 4000); // Poll every 4 seconds
+                }
+            } else {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            }
+        }
+
+        function checkIsScrollAtBottom() {
+            const el = document.getElementById('console-scroll');
+            // Allow 50px tolerance
+            return (el.scrollHeight - el.scrollTop - el.clientHeight) < 50;
+        }
+
+        function scrollToBottom() {
+            const el = document.getElementById('console-scroll');
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function downloadLogs() {
+            if (!activeFile || originalLogLines.length === 0) return;
+            const text = originalLogLines.join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = activeFile;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

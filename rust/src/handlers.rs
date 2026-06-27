@@ -3,6 +3,7 @@ use crate::crypto::{create_download_links, create_image_links, DownloadLink};
 use crate::models::*;
 use axum::{
     extract::{Path as AxumPath, Query},
+    response::Html,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -540,5 +541,82 @@ pub async fn search_playlists(
         success: true,
         data: SearchResultCategory { results, position: 1 },
     }))
+}
+
+// --- Logs UI and API Handlers ---
+
+pub async fn logs_ui() -> Html<&'static str> {
+    Html(include_str!("logs.html"))
+}
+
+#[derive(Deserialize)]
+pub struct LogsAuthPayload {
+    pub password: String,
+}
+
+pub async fn get_log_files(
+    Json(payload): Json<LogsAuthPayload>,
+) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
+    // 1. Verify password
+    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
+    if payload.password != correct_password {
+        return Err(AppError::BadRequest("Unauthorized: Incorrect password".to_string()));
+    }
+
+    // 2. Read logs directory
+    let log_dir = "logs";
+    let mut files = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(log_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if file_name.starts_with("requests_") && file_name.ends_with(".log") {
+                        files.push(file_name.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort files in reverse order (newest first)
+    files.sort_by(|a, b| b.cmp(a));
+
+    Ok(Json(ApiResponse {
+        success: true,
+        data: files,
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct ViewLogPayload {
+    pub password: String,
+    pub file_name: String,
+}
+
+pub async fn view_log_file(
+    Json(payload): Json<ViewLogPayload>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    // 1. Verify password
+    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
+    if payload.password != correct_password {
+        return Err(AppError::BadRequest("Unauthorized: Incorrect password".to_string()));
+    }
+
+    // 2. Prevent directory traversal (sanitize file_name)
+    let file_name = payload.file_name;
+    if !file_name.starts_with("requests_") || !file_name.ends_with(".log") || file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
+        return Err(AppError::BadRequest("Invalid log file name".to_string()));
+    }
+
+    // 3. Read file
+    let path = format!("logs/{}", file_name);
+    match std::fs::read_to_string(&path) {
+        Ok(content) => Ok(Json(ApiResponse {
+            success: true,
+            data: content,
+        })),
+        Err(e) => Err(AppError::NotFound(format!("Log file not found or unreadable: {}", e))),
+    }
 }
 

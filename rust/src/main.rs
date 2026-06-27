@@ -8,7 +8,7 @@ use axum::{
     http::StatusCode,
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use chrono::{Duration, Local};
@@ -63,6 +63,10 @@ async fn main() {
         .route("/api/albums", get(handlers::get_album_details))
         .route("/api/playlists", get(handlers::get_playlist_details))
         .route("/api/artists/:id", get(handlers::get_artist_details))
+        // Logs UI & Viewer
+        .route("/logs", get(handlers::logs_ui))
+        .route("/api/logs/files", post(handlers::get_log_files))
+        .route("/api/logs/view", post(handlers::view_log_file))
         // Middlewares
         .layer(middleware::from_fn(logging_middleware))
         .layer(TraceLayer::new_for_http())
