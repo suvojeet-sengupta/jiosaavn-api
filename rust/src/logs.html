@@ -1052,8 +1052,11 @@
                     <button class="icon-btn" onclick="downloadLogs()" title="Download Log File">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                     </button>
-                    <button class="icon-btn" onclick="clearConsole()" title="Clear Console (Ctrl+L)">
+                    <button class="icon-btn" onclick="clearConsole()" title="Clear Console View (Ctrl+L)">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    </button>
+                    <button class="icon-btn" onclick="clearServerLogs()" title="Clear Log File (Server)" style="color: var(--danger);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     </button>
                 </div>
             </div>
@@ -1672,6 +1675,33 @@
             outputContainer.innerHTML = '';
             calculateStats([]);
             showEmptyLogState();
+        }
+
+        async function clearServerLogs() {
+            if (!activeFile) return;
+
+            const confirmed = confirm(`Are you sure you want to permanently clear the log file "${activeFile}"?\n\nThis action cannot be undone.`);
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch('/api/logs/clear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: logsPassword, file_name: activeFile })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    // Clear UI and reconnect to get fresh (empty) state
+                    clearConsole();
+                    connectLogsWs();
+                } else {
+                    alert('Failed to clear log file: ' + (result.message || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error clearing log file:', err);
+                alert('Failed to clear log file. Check console for details.');
+            }
         }
 
         function downloadLogs() {

@@ -622,6 +622,32 @@ pub async fn view_log_file(
     }
 }
 
+pub async fn clear_log_file(
+    Json(payload): Json<ViewLogPayload>,
+) -> Result<Json<ApiResponse<String>>, AppError> {
+    // 1. Verify password
+    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
+    if payload.password != correct_password {
+        return Err(AppError::BadRequest("Unauthorized: Incorrect password".to_string()));
+    }
+
+    // 2. Prevent directory traversal (sanitize file_name)
+    let file_name = payload.file_name;
+    if !file_name.starts_with("requests_") || !file_name.ends_with(".log") || file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
+        return Err(AppError::BadRequest("Invalid log file name".to_string()));
+    }
+
+    // 3. Truncate (clear) the file
+    let path = format!("logs/{}", file_name);
+    match std::fs::write(&path, "") {
+        Ok(_) => Ok(Json(ApiResponse {
+            success: true,
+            data: format!("Log file {} cleared successfully", file_name),
+        })),
+        Err(e) => Err(AppError::Internal(format!("Failed to clear log file: {}", e))),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct WsParams {
     pub password: Option<String>,

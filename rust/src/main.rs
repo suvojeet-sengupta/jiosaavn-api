@@ -68,6 +68,7 @@ async fn main() {
         .route("/api/logs/files", post(handlers::get_log_files))
         .route("/api/logs/view", post(handlers::view_log_file))
         .route("/api/logs/ws", get(handlers::logs_ws))
+        .route("/api/logs/clear", post(handlers::clear_log_file))
         // Middlewares
         .layer(middleware::from_fn(logging_middleware))
         .layer(TraceLayer::new_for_http())
