@@ -6,6 +6,8 @@ use axum::{
     response::Html,
     Json,
 };
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -617,6 +619,108 @@ pub async fn view_log_file(
             data: content,
         })),
         Err(e) => Err(AppError::NotFound(format!("Log file not found or unreadable: {}", e))),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct WsParams {
+    pub password: Option<String>,
+    #[serde(rename = "file_name")]
+    pub file_name: Option<String>,
+}
+
+pub async fn logs_ws(
+    ws: WebSocketUpgrade,
+    Query(params): Query<WsParams>,
+) -> impl axum::response::IntoResponse {
+    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
+    
+    // Authenticate
+    let authenticated = match params.password {
+        Some(ref pwd) => pwd == &correct_password,
+        None => false,
+    };
+
+    if !authenticated {
+        // Return 401 Unauthorized status and close
+        return axum::response::Response::builder()
+            .status(axum::http::StatusCode::UNAUTHORIZED)
+            .body(axum::body::Body::empty())
+            .unwrap();
+    }
+
+    let file_name = params.file_name.unwrap_or_default();
+
+    ws.on_upgrade(move |socket| handle_ws(socket, file_name))
+}
+
+async fn handle_ws(socket: WebSocket, file_name: String) {
+    let (mut sender, mut receiver) = socket.split();
+
+    // 1. Prevent directory traversal (sanitize file_name)
+    if !file_name.is_empty() {
+        if !file_name.starts_with("requests_") || !file_name.ends_with(".log") || file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
+            let _ = sender.send(Message::Text("Error: Invalid log file name".to_string())).await;
+            return;
+        }
+    }
+
+    // Determine target file to read
+    let target_file = if file_name.is_empty() {
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+        format!("requests_{}.log", today)
+    } else {
+        file_name.clone()
+    };
+
+    // 2. Load existing history
+    let path = format!("logs/{}", target_file);
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        // Send initial dump of logs
+        let _ = sender.send(Message::Text(format!("[INITIAL_DUMP]\n{}", content))).await;
+    } else {
+        let _ = sender.send(Message::Text("[INITIAL_DUMP]\n".to_string())).await;
+    }
+
+    // 3. If it's today's log file, stream live updates!
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let today_file = format!("requests_{}.log", today);
+
+    if target_file == today_file {
+        // Subscribe to global log broadcast channel
+        let mut rx = crate::LOG_BROADCAST.subscribe();
+
+        // Spawn a task to listen to client messages (disconnect detection)
+        let mut read_task = tokio::spawn(async move {
+            while let Some(Ok(msg)) = receiver.next().await {
+                if let Message::Close(_) = msg {
+                    break;
+                }
+            }
+        });
+
+        // Loop and stream new log lines
+        loop {
+            tokio::select! {
+                _ = &mut read_task => {
+                    break;
+                }
+                val = rx.recv() => {
+                    match val {
+                        Ok(log_line) => {
+                            if sender.send(Message::Text(log_line)).await.is_err() {
+                                break;
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        read_task.abort();
     }
 }
 

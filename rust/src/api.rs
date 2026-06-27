@@ -81,10 +81,10 @@ pub async fn use_fetch(
         let mut cache = CACHE.lock().unwrap();
         if let Some(entry) = cache.get(&cache_key) {
             if now < entry.expiry {
-                println!("[CACHE HIT] Key: {}", cache_key);
+                let _ = crate::LOG_CHANNEL.send(format!("[CACHE HIT] Key: {}", cache_key));
                 return Ok(entry.data.clone());
             } else {
-                println!("[CACHE EXPIRED] Removing Key: {}", cache_key);
+                let _ = crate::LOG_CHANNEL.send(format!("[CACHE EXPIRED] Removing Key: {}", cache_key));
                 cache.remove(&cache_key);
             }
         }
@@ -100,7 +100,7 @@ pub async fn use_fetch(
             let before = cache.len();
             cache.retain(|_, entry| now < entry.expiry);
             let after = cache.len();
-            println!("[CACHE CLEANUP] Evicted {} expired entries from memory", before - after);
+            let _ = crate::LOG_CHANNEL.send(format!("[CACHE CLEANUP] Evicted {} expired entries from memory", before - after));
         }
     }
 
@@ -110,7 +110,7 @@ pub async fn use_fetch(
         .copied()
         .unwrap_or(USER_AGENTS[0]);
 
-    println!("[CACHE MISS] Fetching upstream from JioSaavn for: {}", cache_key);
+    let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] Fetching upstream from JioSaavn for: {}", cache_key));
 
     let fetch_start = Instant::now();
     // Send HTTP Request
@@ -132,7 +132,7 @@ pub async fn use_fetch(
         .map_err(|e| format!("Failed to parse JSON response: {}", e))?;
 
     let fetch_duration = fetch_start.elapsed().as_millis();
-    println!("[UPSTREAM FETCH SUCCESS] Key: {} (Took {}ms)", cache_key, fetch_duration);
+    let _ = crate::LOG_CHANNEL.send(format!("[UPSTREAM FETCH SUCCESS] Key: {} (Took {}ms)", cache_key, fetch_duration));
 
     // Cache the result
     if ttl > Duration::ZERO {

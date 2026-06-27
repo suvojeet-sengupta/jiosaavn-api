@@ -67,6 +67,7 @@ async fn main() {
         .route("/logs", get(handlers::logs_ui))
         .route("/api/logs/files", post(handlers::get_log_files))
         .route("/api/logs/view", post(handlers::view_log_file))
+        .route("/api/logs/ws", get(handlers::logs_ws))
         // Middlewares
         .layer(middleware::from_fn(logging_middleware))
         .layer(TraceLayer::new_for_http())
@@ -101,16 +102,13 @@ async fn not_found_handler() -> impl IntoResponse {
     )
 }
 
-struct LogMessage {
-    timestamp: String,
-    method: String,
-    uri: String,
-    status: u16,
-    duration_ms: u128,
-}
+pub static LOG_BROADCAST: Lazy<tokio::sync::broadcast::Sender<String>> = Lazy::new(|| {
+    let (tx, _) = tokio::sync::broadcast::channel(100);
+    tx
+});
 
-static LOG_CHANNEL: Lazy<tokio::sync::mpsc::UnboundedSender<LogMessage>> = Lazy::new(|| {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<LogMessage>();
+pub static LOG_CHANNEL: Lazy<tokio::sync::mpsc::UnboundedSender<String>> = Lazy::new(|| {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
     
     tokio::spawn(async move {
         let log_dir = "logs";
@@ -122,29 +120,19 @@ static LOG_CHANNEL: Lazy<tokio::sync::mpsc::UnboundedSender<LogMessage>> = Lazy:
         let mut current_date = String::new();
         let mut current_file: Option<tokio::io::BufWriter<tokio::fs::File>> = None;
 
-        while let Some(msg) = rx.recv().await {
-            let log_line = format!(
-                "[{}] {} {} {} {}ms",
-                msg.timestamp,
-                msg.method,
-                msg.uri,
-                msg.status,
-                msg.duration_ms
-            );
+        while let Some(raw_msg) = rx.recv().await {
+            let now = Local::now();
+            let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
+            let date_str = now.format("%Y-%m-%d").to_string();
+            
+            let log_line = format!("[{}] {}", timestamp, raw_msg);
             
             // Print to stdout
             println!("{}", log_line);
 
-            // Determine log file path based on date of timestamp
-            let date_str = if msg.timestamp.len() >= 10 {
-                &msg.timestamp[0..10]
-            } else {
-                "unknown"
-            };
-
             // If date changed, rotate file
             if date_str != current_date || current_file.is_none() {
-                current_date = date_str.to_string();
+                current_date = date_str.clone();
                 let log_path = format!("{}/requests_{}.log", log_dir, current_date);
                 
                 // Flush and close previous file if it exists
@@ -174,6 +162,9 @@ static LOG_CHANNEL: Lazy<tokio::sync::mpsc::UnboundedSender<LogMessage>> = Lazy:
                 }
                 let _ = file.flush().await;
             }
+
+            // Broadcast to all active WebSocket connections
+            let _ = LOG_BROADCAST.send(log_line);
         }
     });
     
@@ -190,16 +181,8 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
     let duration = start.elapsed();
     let status = response.status().as_u16();
     
-    let now = Local::now();
-    let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
-    
-    let _ = LOG_CHANNEL.send(LogMessage {
-        timestamp,
-        method,
-        uri,
-        status,
-        duration_ms: duration.as_millis(),
-    });
+    let log_line = format!("{} {} {} {}ms", method, uri, status, duration.as_millis());
+    let _ = LOG_CHANNEL.send(log_line);
     
     response
 }

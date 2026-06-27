@@ -145,6 +145,7 @@
             height: 100vh;
             grid-template-columns: 280px 1fr;
             animation: fadeIn 0.3s ease-out;
+            position: relative;
         }
 
         /* Sidebar */
@@ -154,11 +155,15 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            z-index: 30;
         }
 
         .sidebar-header {
             padding: 1.5rem;
             border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .sidebar-header h1 {
@@ -177,6 +182,14 @@
             padding: 0.15rem 0.4rem;
             border-radius: 0.25rem;
             font-weight: 600;
+        }
+
+        .close-sidebar-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
         }
 
         .file-list-container {
@@ -241,14 +254,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
             gap: 1rem;
         }
 
         .controls-left {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
         }
 
         .controls-right {
@@ -270,6 +282,7 @@
             font-size: 0.875rem;
             width: 240px;
             outline: none;
+            transition: width 0.2s ease;
         }
 
         .search-input:focus {
@@ -287,18 +300,40 @@
             height: 14px;
         }
 
-        .checkbox-label {
-            display: flex;
+        /* Status Indicator */
+        .status-badge {
+            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
+            gap: 0.35rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.3rem 0.6rem;
+            border-radius: 9999px;
+            background-color: var(--bg-element);
             color: var(--text-muted);
-            cursor: pointer;
-            user-select: none;
         }
 
-        .checkbox-label input {
-            cursor: pointer;
+        .status-badge.live {
+            color: var(--success);
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+
+        .status-badge.live .status-dot {
+            background-color: var(--success);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.6; }
         }
 
         .btn-secondary {
@@ -320,6 +355,10 @@
             background-color: var(--border);
         }
 
+        .mobile-toggle {
+            display: none;
+        }
+
         /* Stats Bar */
         .stats-bar {
             background-color: var(--bg-surface);
@@ -329,6 +368,8 @@
             gap: 2.5rem;
             font-size: 0.8rem;
             color: var(--text-muted);
+            overflow-x: auto;
+            white-space: nowrap;
         }
 
         .stat-item strong {
@@ -415,20 +456,84 @@
             font-weight: 600;
         }
 
+        /* Sidebar Backdrop Overlay for Mobile */
+        #backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 25;
+            animation: fadeIn 0.2s ease;
+        }
+
+        /* 📱 Responsive Mobile Adjustments */
+        @media (max-width: 768px) {
+            #dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            aside {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 10px 0 25px rgba(0, 0, 0, 0.5);
+            }
+
+            aside.open {
+                transform: translateX(0);
+            }
+
+            .close-sidebar-btn {
+                display: block;
+            }
+
+            .mobile-toggle {
+                display: inline-flex;
+            }
+
+            header {
+                padding: 0.75rem 1rem;
+            }
+
+            .search-input {
+                width: 140px;
+            }
+            .search-input:focus {
+                width: 180px;
+            }
+
+            .stats-bar {
+                gap: 1.25rem;
+                padding: 0.5rem 1rem;
+            }
+
+            .console-container {
+                padding: 1rem;
+            }
+
+            .console-output {
+                font-size: 0.75rem;
+            }
+        }
+
         /* Scrollbars */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
         ::-webkit-scrollbar-track {
             background: var(--bg-base);
         }
         ::-webkit-scrollbar-thumb {
             background: var(--border);
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -449,11 +554,17 @@
         </form>
     </div>
 
+    <!-- BACKDROP OVERLAY FOR MOBILE -->
+    <div id="backdrop" onclick="closeSidebar()"></div>
+
     <!-- MAIN DASHBOARD -->
     <div id="dashboard">
-        <aside>
+        <aside id="sidebar">
             <div class="sidebar-header">
                 <h1>JioSaavn API <span class="tag">Logs</span></h1>
+                <button class="close-sidebar-btn" onclick="closeSidebar()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
             
             <div class="file-list-container">
@@ -473,27 +584,24 @@
         <main>
             <header>
                 <div class="controls-left">
-                    <span id="active-filename" style="font-family: var(--font-mono); font-weight: 600; font-size: 0.95rem;"></span>
-                    <button class="btn-secondary" onclick="loadActiveLogFile()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                        Refresh
+                    <button class="btn-secondary mobile-toggle" onclick="openSidebar()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
+                    <span id="active-filename" style="font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                    <div id="connection-status" class="status-badge">
+                        <div class="status-dot"></div>
+                        <span id="status-text">Disconnected</span>
+                    </div>
                 </div>
                 
                 <div class="controls-right">
                     <div class="search-wrapper">
                         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="search-filter" class="search-input" placeholder="Filter logs (e.g. GET, 200, Key)..." oninput="applyFilter()">
+                        <input type="text" id="search-filter" class="search-input" placeholder="Filter..." oninput="applyFilter()">
                     </div>
 
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="auto-refresh" checked onchange="toggleAutoRefresh()">
-                        Auto-Refresh
-                    </label>
-
-                    <button class="btn-secondary" onclick="downloadLogs()">
+                    <button class="btn-secondary" onclick="downloadLogs()" title="Download Log File">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                        Download
                     </button>
                 </div>
             </header>
@@ -516,8 +624,9 @@
     <script>
         let logsPassword = localStorage.getItem('logs_password') || '';
         let activeFile = '';
-        let refreshInterval = null;
         let originalLogLines = [];
+        let ws = null;
+        let reconnectTimeout = null;
 
         // Check if already authenticated on load
         if (logsPassword) {
@@ -531,7 +640,7 @@
             
             errorMsg.style.display = 'none';
 
-            // Set logsPassword first so inner loadActiveLogFile calls use the correct password
+            // Set logsPassword first so inner loadFileList and WS calls use it
             logsPassword = passwordInput;
 
             const success = await loadFileList(passwordInput);
@@ -540,9 +649,6 @@
                 
                 document.getElementById('login-card').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'grid';
-                
-                // Set default auto-refresh
-                toggleAutoRefresh();
             } else {
                 errorMsg.style.display = 'block';
                 document.getElementById('password').value = '';
@@ -555,7 +661,6 @@
             if (success) {
                 document.getElementById('login-card').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'grid';
-                toggleAutoRefresh();
             } else {
                 localStorage.removeItem('logs_password');
                 logsPassword = '';
@@ -565,7 +670,19 @@
         function logout() {
             localStorage.removeItem('logs_password');
             logsPassword = '';
+            if (ws) ws.close();
             location.reload();
+        }
+
+        // Mobile Sidebar controls
+        function openSidebar() {
+            document.getElementById('sidebar').classList.add('open');
+            document.getElementById('backdrop').style.display = 'block';
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('backdrop').style.display = 'none';
         }
 
         async function loadFileList(pwd) {
@@ -594,7 +711,10 @@
                     const item = document.createElement('div');
                     item.className = 'file-item';
                     item.innerText = file;
-                    item.onclick = () => selectFile(file, item);
+                    item.onclick = () => {
+                        selectFile(file, item);
+                        closeSidebar();
+                    };
                     listContainer.appendChild(item);
 
                     // Auto select the first file (usually the latest one)
@@ -620,35 +740,120 @@
             element.classList.add('active');
             document.getElementById('active-filename').innerText = filename;
 
-            loadActiveLogFile();
+            // Connect to WebSocket stream for this file
+            connectLogsWs();
         }
 
-        async function loadActiveLogFile() {
+        function updateConnectionStatus(status) {
+            const badge = document.getElementById('connection-status');
+            const text = document.getElementById('status-text');
+
+            if (status === 'live') {
+                badge.className = 'status-badge live';
+                text.innerText = 'Live Streaming';
+            } else if (status === 'history') {
+                badge.className = 'status-badge';
+                text.innerText = 'Static History';
+            } else if (status === 'connecting') {
+                badge.className = 'status-badge';
+                text.innerText = 'Connecting...';
+            } else {
+                badge.className = 'status-badge';
+                text.innerText = 'Disconnected';
+            }
+        }
+
+        function connectLogsWs() {
             if (!activeFile) return;
 
-            try {
-                const response = await fetch('/api/logs/view', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: logsPassword, file_name: activeFile })
-                });
+            // Close existing socket
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
 
-                if (!response.ok) {
+            updateConnectionStatus('connecting');
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/logs/ws?password=${encodeURIComponent(logsPassword)}&file_name=${encodeURIComponent(activeFile)}`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                // Determine if this is today's log file (if it is, status is 'live', else 'history')
+                // Note: The server will close subscription if not today's log file, but keeps connection open to send dump
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (activeFile.includes(todayStr)) {
+                    updateConnectionStatus('live');
+                } else {
+                    updateConnectionStatus('history');
+                }
+            };
+
+            ws.onmessage = (event) => {
+                const message = event.data;
+
+                if (message.startsWith('[INITIAL_DUMP]\n')) {
+                    // This is the history payload of the file
+                    const content = message.slice(15);
+                    originalLogLines = content.split('\n').filter(line => line.trim() !== '');
+                    applyFilter();
+                } else {
+                    // This is a live streamed log line!
+                    const isScrollAtBottom = checkIsScrollAtBottom();
+                    
+                    originalLogLines.push(message);
+                    
+                    const query = document.getElementById('search-filter').value.toLowerCase().trim();
+                    if (!query || message.toLowerCase().includes(query)) {
+                        const outputContainer = document.getElementById('log-output');
+                        
+                        // If it was empty or showing error
+                        if (outputContainer.innerText.startsWith('Select a') || outputContainer.innerText.startsWith('Failed to')) {
+                            outputContainer.innerHTML = '';
+                        }
+                        
+                        const div = document.createElement('div');
+                        div.innerHTML = formatLogLine(message);
+                        // Extract log-line child node
+                        const node = div.firstChild;
+                        outputContainer.appendChild(node);
+                    }
+
+                    // Recalculate stats dynamically
+                    calculateStats(originalLogLines);
+
+                    if (isScrollAtBottom) {
+                        scrollToBottom();
+                    }
+                }
+            };
+
+            ws.onclose = (event) => {
+                // If closed due to unauthorized, logout
+                if (event.code === 4001 || event.reason.includes('Unauthorized')) {
                     logout();
                     return;
                 }
 
-                const result = await response.json();
-                if (result.success) {
-                    const content = result.data || '';
-                    originalLogLines = content.split('\n').filter(line => line.trim() !== '');
-                    applyFilter();
-                } else {
-                    document.getElementById('log-output').innerText = 'Failed to load file content.';
+                updateConnectionStatus('disconnected');
+
+                // Try to reconnect in 5 seconds if it's today's live file
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (activeFile.includes(todayStr)) {
+                    reconnectTimeout = setTimeout(() => {
+                        connectLogsWs();
+                    }, 5000);
                 }
-            } catch (err) {
-                console.error("Error loading log content:", err);
-            }
+            };
+
+            ws.onerror = (error) => {
+                console.error("WebSocket error:", error);
+            };
         }
 
         function applyFilter() {
@@ -679,10 +884,6 @@
         }
 
         function formatLogLine(line) {
-            // Match pattern: [2026-06-27 18:15:30] GET /api/songs/123 200 45ms
-            // Match pattern 2: [CACHE HIT] Key: ...
-            // Match pattern 3: [CACHE MISS] Fetching ...
-            
             let lineClass = "log-line";
             
             if (line.includes("[CACHE HIT]")) {
@@ -738,23 +939,19 @@
             let errors = 0;
 
             lines.forEach(line => {
-                // Check for cache hits/misses inside api requests
                 if (line.includes("[CACHE HIT]")) {
                     cacheHits++;
                 }
 
-                // Check for request log patterns
                 const parts = line.split(' ');
                 if (parts.length >= 5 && parts[0].startsWith('[')) {
                     totalRequests++;
                     
-                    // Status error check (4xx and 5xx)
                     const status = parts[4];
                     if (status.startsWith('4') || status.startsWith('5')) {
                         errors++;
                     }
 
-                    // Latency check
                     const duration = parts[5];
                     if (duration && duration.endsWith('ms')) {
                         const ms = parseInt(duration);
@@ -766,8 +963,6 @@
                 }
             });
 
-            // Adjust cache hits relative to total requests that require upstream (estimate)
-            // Or count CACHE HIT + CACHE MISS to get accurate hit rate on fetches
             let cacheMisses = lines.filter(l => l.includes("[CACHE MISS]")).length;
             let hitRate = 0;
             if (cacheHits + cacheMisses > 0) {
@@ -783,27 +978,9 @@
             document.getElementById('stat-errors').innerText = errorRate + '%';
         }
 
-        function toggleAutoRefresh() {
-            const checked = document.getElementById('auto-refresh').checked;
-            if (checked) {
-                if (!refreshInterval) {
-                    refreshInterval = setInterval(() => {
-                        loadFileList(logsPassword);
-                        loadActiveLogFile();
-                    }, 4000); // Poll every 4 seconds
-                }
-            } else {
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
-            }
-        }
-
         function checkIsScrollAtBottom() {
             const el = document.getElementById('console-scroll');
-            // Allow 50px tolerance
-            return (el.scrollHeight - el.scrollTop - el.clientHeight) < 50;
+            return (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
         }
 
         function scrollToBottom() {
