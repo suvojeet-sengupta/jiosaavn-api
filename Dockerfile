@@ -21,6 +21,8 @@ RUN touch src/main.rs && cargo build --release
 
 FROM alpine:latest
 
+RUN apk add --no-cache tzdata
+
 WORKDIR /app
 
 COPY --from=builder /usr/src/app/target/release/jiosaavn-api-rust ./jiosaavn-api-rust
