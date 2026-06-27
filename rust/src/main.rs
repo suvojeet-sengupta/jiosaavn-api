@@ -21,6 +21,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use bb8_redis::RedisConnectionManager;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_governor::key_extractor::SmartIpKeyExtractor;
 
 #[tokio::main]
 async fn main() {
@@ -49,11 +50,12 @@ async fn main() {
     // 2. Setup CORS
     let cors = CorsLayer::permissive();
 
-    // 2.5 Setup Rate Limiter (2 req/sec, burst size of 10)
-    let governor_conf = std::sync::Arc::new(
+    // 2.5 Setup Rate Limiter (2 req/sec per IP, burst up to 10)
+    let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
             .per_second(2)
             .burst_size(10)
+            .key_extractor(SmartIpKeyExtractor)
             .finish()
             .unwrap(),
     );
@@ -202,12 +204,24 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
     let method = req.method().to_string();
     let uri = req.uri().to_string();
     
-    // Smart Logging: Extract IP Address
+    // Smart Logging: Extract Real IP Address (Support for Proxies & Docker NAT)
     let ip = req
-        .extensions()
-        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
-        .map(|ci| ci.0.ip().to_string())
-        .unwrap_or_else(|| "unknown".to_string());
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or("").trim().to_string())
+        .or_else(|| {
+            req.headers()
+                .get("x-real-ip")
+                .and_then(|h| h.to_str().ok())
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| {
+            req.extensions()
+                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+                .map(|ci| ci.0.ip().to_string())
+                .unwrap_or_else(|| "unknown".to_string())
+        });
     
     let response = next.run(req).await;
     
