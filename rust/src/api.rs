@@ -46,7 +46,7 @@ static CLIENTS: Lazy<Vec<Client>> = Lazy::new(|| {
                     Ok(proxy) => {
                         match Client::builder()
                             .proxy(proxy)
-                            .timeout(Duration::from_secs(10))
+                            .timeout(Duration::from_secs(5)) // Lower timeout for proxies
                             .build()
                         {
                             Ok(client) => {
@@ -141,23 +141,49 @@ pub async fn use_fetch(
         .unwrap_or(USER_AGENTS[0]);
 
     // Select a client (rotating proxies if configured)
-    let client = {
-        let pool = &*CLIENTS;
-        if pool.len() > 1 {
-            pool.choose(&mut rand::thread_rng()).unwrap_or(&pool[0])
-        } else {
-            &pool[0]
-        }
+    let pool = &*CLIENTS;
+    let selected_index = if pool.len() > 1 {
+        // Pick a random client from the pool (index 0 is direct connection)
+        rand::random::<usize>() % pool.len()
+    } else {
+        0
     };
 
+    let mut client = &pool[selected_index];
+
     // Send HTTP Request
-    let response = client
+    let mut response = client
         .get(url.as_str())
         .header("User-Agent", user_agent)
         .header("Content-Type", "application/json")
         .send()
-        .await
-        .map_err(|e| format!("HTTP request failed: {}", e))?;
+        .await;
+
+    // If using a proxy (index > 0) and it fails/times out or returns non-success, fallback to direct connection
+    if selected_index != 0 {
+        let needs_fallback = match &response {
+            Ok(res) => !res.status().is_success(),
+            Err(_) => true,
+        };
+
+        if needs_fallback {
+            if let Err(e) = &response {
+                eprintln!("Proxy request failed (index {}): {}. Falling back to direct connection.", selected_index, e);
+            } else if let Ok(res) = &response {
+                eprintln!("Proxy request returned status {} (index {}). Falling back to direct connection.", res.status(), selected_index);
+            }
+
+            client = &pool[0];
+            response = client
+                .get(url.as_str())
+                .header("User-Agent", user_agent)
+                .header("Content-Type", "application/json")
+                .send()
+                .await;
+        }
+    }
+
+    let response = response.map_err(|e| format!("HTTP request failed: {}", e))?;
 
     if !response.status().is_success() {
         return Err(format!("HTTP request failed with status: {}", response.status()));
