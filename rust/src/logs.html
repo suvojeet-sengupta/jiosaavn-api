@@ -1026,7 +1026,6 @@
                 </button>
             </div>
         </aside>
-
         <main>
             <!-- TOOLBAR -->
             <div class="toolbar">
@@ -1066,6 +1065,10 @@
                 <div class="stat-item">
                     <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     Requests: <strong id="stat-total">0</strong>
+                </div>
+                <div class="stat-item">
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Active Users: <strong id="stat-users">0</strong>
                 </div>
                 <div class="stat-item">
                     <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -1605,6 +1608,7 @@
             let totalLatency = 0;
             let latencyCount = 0;
             let errors = 0;
+            let uniqueIps = new Set();
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -1619,6 +1623,9 @@
                         totalLatency += parsed.durationMs;
                         latencyCount++;
                     }
+                    if (parsed.ip && parsed.ip !== 'unknown') {
+                        uniqueIps.add(parsed.ip);
+                    }
                 }
             }
 
@@ -1627,6 +1634,7 @@
             const errorRate = totalRequests > 0 ? Math.round((errors / totalRequests) * 100) : 0;
 
             document.getElementById('stat-total').innerText = totalRequests.toLocaleString();
+            document.getElementById('stat-users').innerText = uniqueIps.size.toLocaleString();
             document.getElementById('stat-cache-rate').innerText = hitRate + '%';
             document.getElementById('stat-latency').innerText = avgLatency + 'ms';
             document.getElementById('stat-errors').innerText = errorRate + '%';
