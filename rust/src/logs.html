@@ -1506,7 +1506,12 @@
                         durationHtml = ` <span class="${durClass}">${escapeHtml(parsed.duration)}</span>`;
                     }
 
-                    return `<span class="log-line${errorLineClass}"><span class="log-time">${escapeHtml(parsed.time)}</span> <span class="log-method ${methodClass}">${escapeHtml(parsed.method)}</span> <span class="log-uri">${escapeHtml(parsed.uri)}</span> <span class="${statusClass}">${escapeHtml(parsed.statusStr)}</span>${durationHtml}</span>`;
+                    let ipHtml = '';
+                    if (parsed.ip && parsed.ip !== 'unknown') {
+                        ipHtml = ` <span class="log-ip">[IP: ${escapeHtml(parsed.ip)}]</span>`;
+                    }
+
+                    return `<span class="log-line${errorLineClass}"><span class="log-time">${escapeHtml(parsed.time)}</span>${ipHtml} <span class="log-method ${methodClass}">${escapeHtml(parsed.method)}</span> <span class="log-uri">${escapeHtml(parsed.uri)}</span> <span class="${statusClass}">${escapeHtml(parsed.statusStr)}</span>${durationHtml}</span>`;
                 }
                 default:
                     return `<span class="log-line">${escapeHtml(line)}</span>`;
