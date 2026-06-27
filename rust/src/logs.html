@@ -1433,7 +1433,7 @@
 
         /**
          * Parse a log line with format:
-         * [YYYY-MM-DD HH:MM:SS] METHOD /uri STATUS DURATIONms
+         * [YYYY-MM-DD HH:MM:SS] [IP: xxx] METHOD /uri STATUS DURATIONms
          * or special lines like [CACHE HIT], [CACHE MISS], etc.
          */
         function parseLogLine(line) {
@@ -1443,19 +1443,20 @@
             if (line.includes('[CACHE EXPIRED]')) return { type: 'cache-expired', raw: line };
             if (line.includes('[UPSTREAM FETCH SUCCESS]')) return { type: 'upstream', raw: line };
 
-            // Parse request log: [YYYY-MM-DD HH:MM:SS] METHOD /uri STATUS DURATIONms
-            const match = line.match(/^(\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\])\s+(\w+)\s+(\S+)\s+(\d{3})\s+(\d+ms)$/);
+            // Parse request log: [YYYY-MM-DD HH:MM:SS] [IP: xxx] METHOD /uri STATUS DURATIONms
+            const match = line.match(/^(\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\])\s+(?:\[IP:\s*([^\]]+)\]\s+)?(\w+)\s+(\S+)\s+(\d{3})\s+(\d+ms)$/);
             if (match) {
                 return {
                     type: 'request',
                     raw: line,
                     time: match[1],
-                    method: match[2],
-                    uri: match[3],
-                    status: parseInt(match[4], 10),
-                    statusStr: match[4],
-                    duration: match[5],
-                    durationMs: parseInt(match[5], 10)
+                    ip: match[2] || 'unknown',
+                    method: match[3],
+                    uri: match[4],
+                    status: parseInt(match[5], 10),
+                    statusStr: match[5],
+                    duration: match[6],
+                    durationMs: parseInt(match[6], 10)
                 };
             }
 
