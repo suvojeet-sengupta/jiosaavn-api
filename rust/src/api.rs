@@ -2,9 +2,13 @@ use once_cell::sync::Lazy;
 use rand::seq::SliceRandom;
 use reqwest::Client;
 use serde_json::Value;
+use bb8_redis::{bb8, RedisConnectionManager};
+use redis::AsyncCommands;
 use std::collections::HashMap;
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
+
+pub type RedisPool = bb8::Pool<RedisConnectionManager>;
+pub static REDIS_POOL: tokio::sync::OnceCell<RedisPool> = tokio::sync::OnceCell::const_new();
 
 // 1. User Agent List
 static USER_AGENTS: &[&str] = &[
@@ -15,15 +19,6 @@ static USER_AGENTS: &[&str] = &[
     "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/605.1.15",
 ];
-
-// 2. In-Memory Cache
-struct CacheEntry {
-    data: Value,
-    expiry: Instant,
-}
-
-static CACHE: Lazy<Mutex<HashMap<String, CacheEntry>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-static INSERT_COUNT: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(0));
 
 // Client Instance
 static CLIENT: Lazy<Client> = Lazy::new(|| {
@@ -74,33 +69,18 @@ pub async fn use_fetch(
 
     let cache_key = format!("{}:{}", endpoint, url.query().unwrap_or(""));
     let ttl = get_ttl(endpoint);
-    let now = Instant::now();
-
     // Try cache lookup
     if ttl > Duration::ZERO {
-        let mut cache = CACHE.lock().unwrap();
-        if let Some(entry) = cache.get(&cache_key) {
-            if now < entry.expiry {
-                let _ = crate::LOG_CHANNEL.send(format!("[CACHE HIT] Key: {}", cache_key));
-                return Ok(entry.data.clone());
-            } else {
-                let _ = crate::LOG_CHANNEL.send(format!("[CACHE EXPIRED] Removing Key: {}", cache_key));
-                cache.remove(&cache_key);
+        if let Some(pool) = REDIS_POOL.get() {
+            if let Ok(mut conn) = pool.get().await {
+                let cached_data: Result<String, _> = conn.get(&cache_key).await;
+                if let Ok(data_str) = cached_data {
+                    if let Ok(parsed) = serde_json::from_str(&data_str) {
+                        let _ = crate::LOG_CHANNEL.send(format!("[CACHE HIT] Key: {}", cache_key));
+                        return Ok(parsed);
+                    }
+                }
             }
-        }
-    }
-
-    // Lazy cleanup of cache
-    {
-        let mut count = INSERT_COUNT.lock().unwrap();
-        *count += 1;
-        if *count >= 100 {
-            *count = 0;
-            let mut cache = CACHE.lock().unwrap();
-            let before = cache.len();
-            cache.retain(|_, entry| now < entry.expiry);
-            let after = cache.len();
-            let _ = crate::LOG_CHANNEL.send(format!("[CACHE CLEANUP] Evicted {} expired entries from memory", before - after));
         }
     }
 
@@ -136,14 +116,13 @@ pub async fn use_fetch(
 
     // Cache the result
     if ttl > Duration::ZERO {
-        let mut cache = CACHE.lock().unwrap();
-        cache.insert(
-            cache_key,
-            CacheEntry {
-                data: data.clone(),
-                expiry: now + ttl,
-            },
-        );
+        if let Some(pool) = REDIS_POOL.get() {
+            if let Ok(mut conn) = pool.get().await {
+                if let Ok(data_str) = serde_json::to_string(&data) {
+                    let _: Result<(), _> = conn.set_ex(&cache_key, data_str, ttl.as_secs()).await;
+                }
+            }
+        }
     }
 
     Ok(data)

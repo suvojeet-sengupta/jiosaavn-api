@@ -19,6 +19,8 @@ use tokio::fs::{create_dir_all, OpenOptions};
 use tokio::io::AsyncWriteExt;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
+use bb8_redis::RedisConnectionManager;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 
 #[tokio::main]
 async fn main() {
@@ -28,11 +30,33 @@ async fn main() {
     // 1. Initialize tracer logging
     tracing_subscriber::fmt::init();
 
+    // 1.5 Initialize Redis Pool
+    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+    if let Ok(manager) = RedisConnectionManager::new(redis_url) {
+        if let Ok(pool) = bb8_redis::bb8::Pool::builder().build(manager).await {
+            let _ = api::REDIS_POOL.set(pool);
+            println!("✅ Connected to Redis successfully");
+        } else {
+            eprintln!("⚠️ Failed to create Redis pool");
+        }
+    } else {
+        eprintln!("⚠️ Invalid REDIS_URL");
+    }
+
     // Start background log rotation cleanup
     tokio::spawn(clean_old_logs_task());
 
     // 2. Setup CORS
     let cors = CorsLayer::permissive();
+
+    // 2.5 Setup Rate Limiter (2 req/sec, burst size of 10)
+    let governor_conf = std::sync::Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(2)
+            .burst_size(10)
+            .finish()
+            .unwrap(),
+    );
 
     // 3. Define routes
     let dist_dir = if std::path::Path::new("./dist").exists() {
@@ -70,6 +94,7 @@ async fn main() {
         .route("/api/logs/ws", get(handlers::logs_ws))
         .route("/api/logs/clear", post(handlers::clear_log_file))
         // Middlewares
+        .layer(GovernorLayer { config: governor_conf })
         .layer(middleware::from_fn(logging_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

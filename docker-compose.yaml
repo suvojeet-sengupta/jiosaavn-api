@@ -11,6 +11,20 @@ services:
     environment:
       - PORT=3000
       - RUST_LOG=info
+      - REDIS_URL=redis://jiosaavn-redis:6379/0
     env_file:
       - .env
     restart: unless-stopped
+    depends_on:
+      - jiosaavn-redis
+
+  jiosaavn-redis:
+    container_name: jiosaavn-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:
