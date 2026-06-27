@@ -2,27 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>JioSaavn API Server Logs</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-base: #0b0f19;
-            --bg-surface: #151d30;
+            --bg-base: #0a0e1a;
+            --bg-surface: #111827;
             --bg-element: #1e293b;
-            --text-main: #f8fafc;
+            --bg-console: #050810;
+            --text-main: #f1f5f9;
             --text-muted: #94a3b8;
+            --text-dim: #64748b;
             --primary: #3b82f6;
+            --primary-hover: #2563eb;
             --primary-glow: rgba(59, 130, 246, 0.15);
+            --primary-ring: rgba(59, 130, 246, 0.25);
             --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
             --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.08);
             --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.08);
             --accent: #06b6d4;
-            --border: #334155;
-            --font-sans: 'Inter', sans-serif;
-            --font-mono: 'Fira Code', monospace;
+            --accent-bg: rgba(6, 182, 212, 0.08);
+            --purple: #a855f7;
+            --border: #1e293b;
+            --border-light: #334155;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 20px 40px rgba(0,0,0,0.5);
+            --sidebar-width: 280px;
+            --header-height: auto;
         }
 
         * {
@@ -31,124 +50,166 @@
             padding: 0;
         }
 
-        body {
+        html, body {
             font-family: var(--font-sans);
             background-color: var(--bg-base);
             color: var(--text-main);
-            height: 100vh;
+            height: 100%;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
         }
 
-        /* Password Modal Styling */
+        /* ═══════════════════════════════════════════
+           LOGIN CARD
+           ═══════════════════════════════════════════ */
         #login-card {
             background-color: var(--bg-surface);
-            padding: 2.5rem;
-            border-radius: 1rem;
-            border: 1px solid var(--border);
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            padding: 2rem 1.75rem;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-light);
+            width: calc(100% - 2rem);
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
             text-align: center;
-            animation: fadeIn 0.4s ease-out;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #login-card .lock-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem;
+            background: var(--primary-glow);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
         }
 
         #login-card h2 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+            font-size: 1.35rem;
+            margin-bottom: 0.35rem;
             font-weight: 700;
-            letter-spacing: -0.025em;
+            letter-spacing: -0.02em;
         }
 
         #login-card p {
             color: var(--text-muted);
-            font-size: 0.875rem;
-            margin-bottom: 2rem;
+            font-size: 0.825rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
         }
 
         .input-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
             text-align: left;
         }
 
         .input-group label {
             display: block;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             color: var(--text-muted);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
             font-weight: 600;
         }
 
         .input-control {
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 0.7rem 0.85rem;
             background-color: var(--bg-element);
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
             color: var(--text-main);
             font-family: var(--font-sans);
-            font-size: 1rem;
+            font-size: 0.9rem;
             outline: none;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .input-control:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-glow);
+            box-shadow: 0 0 0 3px var(--primary-ring);
         }
 
-        .btn {
+        .btn-primary {
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 0.4rem;
             width: 100%;
-            padding: 0.75rem 1rem;
-            background-color: var(--primary);
+            padding: 0.7rem 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
             color: white;
             border: none;
-            border-radius: 0.5rem;
-            font-size: 0.95rem;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
+            font-family: var(--font-sans);
         }
 
-        .btn:hover {
-            background-color: #2563eb;
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-hover), #1d4ed8);
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
-        .btn:active {
+        .btn-primary:active {
             transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         #error-msg {
             color: var(--danger);
-            font-size: 0.875rem;
-            margin-top: 1rem;
+            font-size: 0.825rem;
+            margin-top: 0.75rem;
             display: none;
+            padding: 0.5rem 0.75rem;
+            background: var(--danger-bg);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(239, 68, 68, 0.15);
         }
 
-        /* Logs Dashboard Layout */
+        /* ═══════════════════════════════════════════
+           DASHBOARD LAYOUT
+           ═══════════════════════════════════════════ */
         #dashboard {
             display: none;
             width: 100%;
-            height: 100vh;
-            grid-template-columns: 280px 1fr;
+            height: 100%;
+            grid-template-columns: var(--sidebar-width) 1fr;
             animation: fadeIn 0.3s ease-out;
             position: relative;
         }
 
-        /* Sidebar */
+        /* ═══════════════════════════════════════════
+           SIDEBAR
+           ═══════════════════════════════════════════ */
         aside {
             background-color: var(--bg-surface);
             border-right: 1px solid var(--border);
@@ -159,29 +220,33 @@
         }
 
         .sidebar-header {
-            padding: 1.5rem;
+            padding: 1.25rem 1rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-shrink: 0;
         }
 
         .sidebar-header h1 {
-            font-size: 1.15rem;
+            font-size: 1rem;
             font-weight: 700;
             color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            white-space: nowrap;
         }
 
         .sidebar-header .tag {
-            font-size: 0.7rem;
-            background-color: var(--primary-glow);
+            font-size: 0.65rem;
+            background: linear-gradient(135deg, var(--primary-glow), rgba(59, 130, 246, 0.08));
             color: var(--primary);
-            padding: 0.15rem 0.4rem;
+            padding: 0.15rem 0.45rem;
             border-radius: 0.25rem;
             font-weight: 600;
+            letter-spacing: 0.02em;
+            border: 1px solid rgba(59, 130, 246, 0.15);
         }
 
         .close-sidebar-btn {
@@ -190,35 +255,46 @@
             border: none;
             color: var(--text-muted);
             cursor: pointer;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            transition: color 0.15s, background-color 0.15s;
+        }
+
+        .close-sidebar-btn:hover {
+            color: var(--text-main);
+            background-color: var(--bg-element);
         }
 
         .file-list-container {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 0.75rem;
         }
 
-        .file-list-container h3 {
-            font-size: 0.75rem;
+        .file-list-label {
+            font-size: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: 0.75rem;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            padding: 0 0.5rem;
             font-weight: 600;
         }
 
         .file-item {
             display: flex;
             align-items: center;
-            padding: 0.65rem 0.85rem;
-            border-radius: 0.375rem;
+            gap: 0.5rem;
+            padding: 0.55rem 0.65rem;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            margin-bottom: 0.35rem;
-            font-size: 0.875rem;
+            margin-bottom: 0.15rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
             transition: all 0.15s ease;
             font-family: var(--font-mono);
             border: 1px solid transparent;
+            user-select: none;
         }
 
         .file-item:hover {
@@ -229,128 +305,179 @@
         .file-item.active {
             background-color: var(--primary-glow);
             color: var(--primary);
-            border-color: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.2);
             font-weight: 500;
         }
 
-        .sidebar-footer {
-            padding: 1rem;
-            border-top: 1px solid var(--border);
+        .file-item .file-icon {
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            opacity: 0.6;
         }
 
-        /* Main Console Panel */
+        .file-item.active .file-icon {
+            opacity: 1;
+        }
+
+        .file-item .file-size {
+            margin-left: auto;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        .sidebar-footer {
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        /* ═══════════════════════════════════════════
+           MAIN CONTENT AREA
+           ═══════════════════════════════════════════ */
         main {
             display: flex;
             flex-direction: column;
             height: 100%;
             overflow: hidden;
             background-color: var(--bg-base);
-        }
-
-        header {
-            background-color: var(--bg-surface);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            padding: 0.85rem 1rem;
-        }
-
-        .header-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-        }
-
-        .header-search-row {
-            width: 100%;
-        }
-
-        @media (min-width: 769px) {
-            header {
-                flex-direction: row;
-                align-items: center;
-                justify-content: space-between;
-                padding: 1rem 1.5rem;
-                gap: 1rem;
-            }
-            .header-top {
-                width: auto;
-                justify-content: flex-start;
-                gap: 1rem;
-            }
-            .header-search-row {
-                width: auto;
-            }
-        }
-
-        .controls-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .controls-right {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .search-wrapper {
             position: relative;
         }
 
+        /* Header / Toolbar */
+        .toolbar {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+        }
+
+        .toolbar-center {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .mobile-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-element);
+            border: 1px solid var(--border-light);
+            color: var(--text-main);
+            cursor: pointer;
+            outline: none;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .mobile-toggle:hover {
+            background-color: var(--border-light);
+        }
+
+        #active-filename {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-main);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Search */
+        .search-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
         .search-input {
-            padding: 0.5rem 1rem 0.5rem 2rem;
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
             background-color: var(--bg-element);
             border: 1px solid var(--border);
-            border-radius: 0.375rem;
+            border-radius: var(--radius-sm);
             color: var(--text-main);
-            font-size: 0.875rem;
-            width: 240px;
+            font-size: 0.825rem;
+            font-family: var(--font-sans);
+            width: 100%;
             outline: none;
-            transition: width 0.2s ease;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .search-input:focus {
             border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-ring);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-dim);
         }
 
         .search-icon {
             position: absolute;
-            left: 0.75rem;
+            left: 0.6rem;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--text-muted);
+            color: var(--text-dim);
             pointer-events: none;
             width: 14px;
             height: 14px;
         }
 
-        /* Status Indicator */
+        /* Status Badge */
         .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            font-size: 0.8rem;
+            gap: 0.3rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            padding: 0.3rem 0.6rem;
+            padding: 0.2rem 0.5rem;
             border-radius: 9999px;
             background-color: var(--bg-element);
             color: var(--text-muted);
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .status-badge.live {
             color: var(--success);
-            background-color: rgba(16, 185, 129, 0.1);
+            background-color: var(--success-bg);
+        }
+
+        .status-badge.connecting {
+            color: var(--warning);
+            background-color: var(--warning-bg);
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background-color: var(--text-muted);
+            flex-shrink: 0;
         }
 
         .status-badge.live .status-dot {
@@ -358,149 +485,317 @@
             animation: pulse 1.5s infinite;
         }
 
+        .status-badge.connecting .status-dot {
+            background-color: var(--warning);
+            animation: pulse 0.8s infinite;
+        }
+
         @keyframes pulse {
-            0% { transform: scale(0.9); opacity: 0.6; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(0.9); opacity: 0.6; }
+            0% { transform: scale(0.85); opacity: 0.5; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(0.85); opacity: 0.5; }
+        }
+
+        /* Icon Buttons */
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-element);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .icon-btn:hover {
+            background-color: var(--border-light);
+            color: var(--text-main);
         }
 
         .btn-secondary {
             background-color: var(--bg-element);
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-light);
             color: var(--text-main);
-            padding: 0.5rem 0.85rem;
-            border-radius: 0.375rem;
-            font-size: 0.875rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
             font-weight: 500;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
             transition: all 0.15s ease;
+            font-family: var(--font-sans);
+            white-space: nowrap;
         }
 
         .btn-secondary:hover {
-            background-color: var(--border);
+            background-color: var(--border-light);
         }
 
-        .mobile-toggle {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            padding: 0;
-            border-radius: 0.375rem;
-            background-color: var(--bg-element);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            cursor: pointer;
-            outline: none;
-            transition: all 0.15s ease;
-        }
-
-        .mobile-toggle:hover {
-            background-color: var(--border);
-        }
-
-        /* Stats Bar */
+        /* ═══════════════════════════════════════════
+           STATS BAR
+           ═══════════════════════════════════════════ */
         .stats-bar {
             background-color: var(--bg-surface);
             border-bottom: 1px solid var(--border);
-            padding: 0.65rem 1.5rem;
+            padding: 0.5rem 1rem;
             display: flex;
-            gap: 2.5rem;
-            font-size: 0.8rem;
+            gap: 1rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
             overflow-x: auto;
             white-space: nowrap;
+            flex-shrink: 0;
+            scrollbar-width: none;
+        }
+
+        .stats-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-shrink: 0;
         }
 
         .stat-item strong {
             color: var(--text-main);
             font-family: var(--font-mono);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
 
-        /* Console Output Container */
+        .stat-item .stat-icon {
+            width: 14px;
+            height: 14px;
+            opacity: 0.5;
+        }
+
+        /* ═══════════════════════════════════════════
+           FILTER TABS
+           ═══════════════════════════════════════════ */
+        .filter-tabs {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 1rem;
+            display: flex;
+            gap: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+            flex-shrink: 0;
+        }
+
+        .filter-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-tab {
+            padding: 0.45rem 0.75rem;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-family: var(--font-sans);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .filter-tab:hover {
+            color: var(--text-muted);
+        }
+
+        .filter-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .filter-tab .tab-count {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            margin-left: 0.3rem;
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.2rem;
+            background-color: var(--bg-element);
+        }
+
+        .filter-tab.active .tab-count {
+            background-color: var(--primary-glow);
+            color: var(--primary);
+        }
+
+        /* ═══════════════════════════════════════════
+           CONSOLE CONTAINER
+           ═══════════════════════════════════════════ */
         .console-container {
             flex: 1;
-            padding: 1.5rem;
             overflow-y: auto;
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
-            background-color: #060913;
+            background-color: var(--bg-console);
+            position: relative;
         }
 
         .console-output {
             font-family: var(--font-mono);
-            font-size: 0.85rem;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-all;
-            color: #d1d5db;
+            font-size: 0.8rem;
+            line-height: 1.65;
+            color: #cbd5e1;
+            padding: 0.75rem;
+            min-height: 100%;
         }
 
-        /* Highlighting Classes */
+        /* Empty / Loading States */
+        .console-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 1rem;
+            color: var(--text-dim);
+            text-align: center;
+            gap: 0.75rem;
+            min-height: 200px;
+        }
+
+        .console-empty svg {
+            opacity: 0.3;
+        }
+
+        .console-empty .empty-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .console-empty .empty-desc {
+            font-size: 0.8rem;
+            max-width: 320px;
+            line-height: 1.5;
+        }
+
+        .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Log Lines */
         .log-line {
             display: block;
-            border-bottom: 1px solid #111827;
-            padding: 0.15rem 0;
+            padding: 0.15rem 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
             transition: background-color 0.1s ease;
+            word-break: break-all;
+            white-space: pre-wrap;
         }
 
         .log-line:hover {
-            background-color: #111827;
+            background-color: rgba(255, 255, 255, 0.03);
         }
 
-        .log-time {
-            color: #6b7280;
-            margin-right: 0.5rem;
-        }
+        .log-time { color: var(--text-dim); }
+        .log-method { font-weight: 600; }
+        .method-get { color: #3b82f6; }
+        .method-post { color: var(--purple); }
+        .method-put { color: var(--warning); }
+        .method-delete { color: var(--danger); }
+        .method-head { color: var(--accent); }
+        .method-patch { color: #ec4899; }
+        .method-options { color: var(--text-muted); }
+        .log-uri { color: #e2e8f0; }
+        .status-2xx { color: var(--success); font-weight: 500; }
+        .status-3xx { color: var(--warning); font-weight: 500; }
+        .status-4xx { color: var(--danger); font-weight: 500; }
+        .status-5xx { color: #f43f5e; font-weight: 700; }
+        .log-duration { color: var(--text-dim); }
+        .duration-slow { color: var(--warning); font-weight: 500; }
+        .duration-critical { color: var(--danger); font-weight: 600; }
 
-        .method-get { color: #3b82f6; font-weight: 600; }
-        .method-post { color: #a855f7; font-weight: 600; }
-        .status-2xx { color: var(--success); }
-        .status-3xx { color: var(--warning); }
-        .status-4xx { color: var(--danger); }
-        .status-5xx { color: #f43f5e; font-weight: bold; }
-        
         .log-cache-hit {
             color: var(--accent);
-            background-color: rgba(6, 182, 212, 0.08);
-            padding: 0 0.25rem;
+            background-color: var(--accent-bg);
+            padding: 0.1rem 0.4rem;
             border-radius: 0.15rem;
         }
-        
+
         .log-cache-miss {
             color: var(--warning);
-            background-color: rgba(245, 158, 11, 0.08);
-            padding: 0 0.25rem;
+            background-color: var(--warning-bg);
+            padding: 0.1rem 0.4rem;
             border-radius: 0.15rem;
         }
 
         .log-cache-expired {
-            color: #e2e8f0;
-            background-color: rgba(226, 232, 240, 0.08);
-            padding: 0 0.25rem;
+            color: #94a3b8;
+            background-color: rgba(148, 163, 184, 0.06);
+            padding: 0.1rem 0.4rem;
             border-radius: 0.15rem;
         }
 
         .log-upstream {
-            color: #10b981;
+            color: var(--success);
+            background-color: var(--success-bg);
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.15rem;
         }
 
-        .duration-slow {
-            color: var(--warning);
-            font-weight: 500;
+        .log-error-line {
+            background-color: rgba(239, 68, 68, 0.04);
         }
 
-        .duration-critical {
-            color: var(--danger);
-            font-weight: 600;
+        /* Scroll to Bottom FAB */
+        .scroll-fab {
+            position: absolute;
+            bottom: 1.25rem;
+            right: 1.25rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            transition: transform 0.2s, opacity 0.2s;
+            z-index: 10;
         }
 
-        /* Sidebar Backdrop Overlay for Mobile */
+        .scroll-fab:hover {
+            transform: scale(1.1);
+        }
+
+        .scroll-fab.visible {
+            display: flex;
+        }
+
+        /* ═══════════════════════════════════════════
+           BACKDROP OVERLAY
+           ═══════════════════════════════════════════ */
         #backdrop {
             display: none;
             position: fixed;
@@ -508,12 +803,43 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: rgba(0, 0, 0, 0.6);
+            background-color: rgba(0, 0, 0, 0.65);
             z-index: 25;
             animation: fadeIn 0.2s ease;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
         }
 
-        /* 📱 Responsive Mobile Adjustments */
+        /* ═══════════════════════════════════════════
+           SCROLLBARS
+           ═══════════════════════════════════════════ */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
+        /* ═══════════════════════════════════════════
+           RESPONSIVE: TABLET (≤ 900px)
+           ═══════════════════════════════════════════ */
+        @media (max-width: 900px) {
+            :root {
+                --sidebar-width: 260px;
+            }
+        }
+
+        /* ═══════════════════════════════════════════
+           RESPONSIVE: MOBILE (≤ 768px)
+           ═══════════════════════════════════════════ */
         @media (max-width: 768px) {
             #dashboard {
                 grid-template-columns: 1fr;
@@ -524,10 +850,10 @@
                 top: 0;
                 left: 0;
                 bottom: 0;
-                width: 280px;
+                width: var(--sidebar-width);
                 transform: translateX(-100%);
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: 10px 0 25px rgba(0, 0, 0, 0.5);
+                box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
             }
 
             aside.open {
@@ -535,174 +861,332 @@
             }
 
             .close-sidebar-btn {
-                display: block;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .mobile-toggle {
                 display: inline-flex;
             }
 
-            header {
-                padding: 0.75rem 1rem;
-                gap: 0.5rem;
+            #active-filename {
+                max-width: 100px;
+                font-size: 0.75rem;
+            }
+
+            .toolbar {
+                padding: 0.5rem 0.65rem;
+                gap: 0.4rem;
             }
 
             .search-input {
-                width: 100% !important;
+                font-size: 0.8rem;
+            }
+
+            .stats-bar {
+                padding: 0.45rem 0.65rem;
+                gap: 0.65rem;
+                font-size: 0.7rem;
+            }
+
+            .stat-item strong {
+                font-size: 0.75rem;
+            }
+
+            .console-output {
+                font-size: 0.72rem;
+                padding: 0.5rem;
+                line-height: 1.55;
+            }
+
+            .log-line {
+                padding: 0.1rem 0.25rem;
+            }
+
+            .filter-tabs {
+                padding: 0 0.65rem;
+            }
+
+            .filter-tab {
+                padding: 0.4rem 0.6rem;
+                font-size: 0.67rem;
+            }
+
+            .scroll-fab {
+                bottom: 1rem;
+                right: 0.75rem;
+                width: 32px;
+                height: 32px;
+            }
+
+            /* Hide download text on mobile */
+            .download-text {
+                display: none;
+            }
+        }
+
+        /* ═══════════════════════════════════════════
+           RESPONSIVE: SMALL MOBILE (≤ 400px)
+           ═══════════════════════════════════════════ */
+        @media (max-width: 400px) {
+            #login-card {
+                padding: 1.5rem 1.25rem;
+            }
+
+            #login-card h2 {
+                font-size: 1.15rem;
+            }
+
+            .status-badge span {
+                display: none;
+            }
+
+            .status-badge {
+                padding: 0.2rem 0.3rem;
+            }
+
+            #active-filename {
+                max-width: 80px;
             }
 
             .stats-bar {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 0.75rem;
-                padding: 0.75rem 1rem;
+                gap: 0.4rem;
                 white-space: normal;
-                overflow-x: hidden;
-            }
-
-            .console-container {
-                padding: 0.75rem;
             }
 
             .console-output {
-                font-size: 0.75rem;
+                font-size: 0.65rem;
+                line-height: 1.5;
             }
         }
 
-        /* Scrollbars */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: var(--bg-base);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
+        /* ═══════════════════════════════════════════
+           DESKTOP LARGE (≥ 1200px)
+           ═══════════════════════════════════════════ */
+        @media (min-width: 1200px) {
+            .toolbar-center {
+                max-width: 500px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN CARD -->
+    <!-- ═══════════════ LOGIN CARD ═══════════════ -->
     <div id="login-card">
+        <div class="lock-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
         <h2>Logs Access Portal</h2>
         <p>Enter the administrator credentials to view real-time server activity.</p>
-        
+
         <form id="login-form" onsubmit="handleLogin(event)">
             <div class="input-group">
                 <label for="password">Server Password</label>
                 <input type="password" id="password" class="input-control" placeholder="••••••••" required autocomplete="current-password">
             </div>
-            <button type="submit" class="btn">Authenticate</button>
+            <button type="submit" class="btn-primary" id="login-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                Authenticate
+            </button>
             <div id="error-msg">Incorrect password. Please try again.</div>
         </form>
     </div>
 
-    <!-- BACKDROP OVERLAY FOR MOBILE -->
+    <!-- ═══════════════ BACKDROP ═══════════════ -->
     <div id="backdrop" onclick="closeSidebar()"></div>
 
-    <!-- MAIN DASHBOARD -->
+    <!-- ═══════════════ DASHBOARD ═══════════════ -->
     <div id="dashboard">
         <aside id="sidebar">
             <div class="sidebar-header">
-                <h1>JioSaavn API <span class="tag">Logs</span></h1>
-                <button class="close-sidebar-btn" onclick="closeSidebar()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <h1>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    JioSaavn API <span class="tag">Logs</span>
+                </h1>
+                <button class="close-sidebar-btn" onclick="closeSidebar()" aria-label="Close sidebar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
-            
+
             <div class="file-list-container">
-                <h3>Log Files</h3>
+                <div class="file-list-label">Log Files</div>
                 <div id="file-list">
-                    <!-- File list loaded dynamically -->
+                    <!-- Populated dynamically -->
                 </div>
             </div>
-            
+
             <div class="sidebar-footer">
                 <button class="btn-secondary" style="width: 100%; justify-content: center;" onclick="logout()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                     Logout
                 </button>
             </div>
         </aside>
 
         <main>
-            <header>
-                <div class="header-top">
-                    <div class="controls-left">
-                        <button class="btn-secondary mobile-toggle" onclick="openSidebar()" aria-label="Toggle Sidebar">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                        </button>
-                        <span id="active-filename" style="font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
-                    </div>
-                    <div class="controls-right">
-                        <div id="connection-status" class="status-badge">
-                            <div class="status-dot"></div>
-                            <span id="status-text">Disconnected</span>
-                        </div>
-                        <button class="btn-secondary" onclick="downloadLogs()" title="Download Log File">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                        </button>
-                    </div>
+            <!-- TOOLBAR -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button class="mobile-toggle" onclick="openSidebar()" aria-label="Toggle Sidebar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    <span id="active-filename"></span>
                 </div>
-                
-                <div class="header-search-row">
+
+                <div class="toolbar-center">
                     <div class="search-wrapper">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="search-filter" class="search-input" placeholder="Filter logs (e.g. GET, 200, Key)..." oninput="applyFilter()">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="search-filter" class="search-input" placeholder="Filter logs (e.g. GET, 200, /api/songs)..." oninput="debouncedApplyFilter()">
                     </div>
                 </div>
-            </header>
+
+                <div class="toolbar-right">
+                    <div id="connection-status" class="status-badge">
+                        <div class="status-dot"></div>
+                        <span id="status-text">Disconnected</span>
+                    </div>
+                    <button class="icon-btn" onclick="downloadLogs()" title="Download Log File">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    </button>
+                    <button class="icon-btn" onclick="clearConsole()" title="Clear Console (Ctrl+L)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    </button>
+                </div>
+            </div>
 
             <!-- STATS BAR -->
             <div class="stats-bar">
-                <div class="stat-item">Total Requests: <strong id="stat-total">0</strong></div>
-                <div class="stat-item">Cache Hit Rate: <strong id="stat-cache-rate">0%</strong></div>
-                <div class="stat-item">Avg Latency: <strong id="stat-latency">0ms</strong></div>
-                <div class="stat-item">Error Rate: <strong id="stat-errors">0%</strong></div>
+                <div class="stat-item">
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    Requests: <strong id="stat-total">0</strong>
+                </div>
+                <div class="stat-item">
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Cache: <strong id="stat-cache-rate">0%</strong>
+                </div>
+                <div class="stat-item">
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Latency: <strong id="stat-latency">0ms</strong>
+                </div>
+                <div class="stat-item">
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Errors: <strong id="stat-errors">0%</strong>
+                </div>
             </div>
 
-            <!-- CONSOLE CONTAINER -->
+            <!-- FILTER TABS -->
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all" onclick="setFilterTab('all', this)">All</button>
+                <button class="filter-tab" data-filter="2xx" onclick="setFilterTab('2xx', this)">2xx</button>
+                <button class="filter-tab" data-filter="3xx" onclick="setFilterTab('3xx', this)">3xx</button>
+                <button class="filter-tab" data-filter="4xx" onclick="setFilterTab('4xx', this)">4xx</button>
+                <button class="filter-tab" data-filter="5xx" onclick="setFilterTab('5xx', this)">5xx</button>
+                <button class="filter-tab" data-filter="slow" onclick="setFilterTab('slow', this)">Slow (>500ms)</button>
+                <button class="filter-tab" data-filter="cache" onclick="setFilterTab('cache', this)">Cache</button>
+            </div>
+
+            <!-- CONSOLE -->
             <div class="console-container" id="console-scroll">
-                <div class="console-output" id="log-output">Select a log file on the left side to get started.</div>
+                <div class="console-output" id="log-output">
+                    <div class="console-empty" id="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <div class="empty-title">No log file selected</div>
+                        <div class="empty-desc">Select a log file from the sidebar to view server activity</div>
+                    </div>
+                </div>
+                <button class="scroll-fab" id="scroll-fab" onclick="scrollToBottom()" title="Scroll to bottom">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                </button>
             </div>
         </main>
     </div>
 
     <script>
+        // ═══════════════════════════════════════════
+        // STATE
+        // ═══════════════════════════════════════════
         let logsPassword = localStorage.getItem('logs_password') || '';
         let activeFile = '';
         let originalLogLines = [];
         let ws = null;
         let reconnectTimeout = null;
+        let filterTab = 'all';
+        let debounceTimer = null;
+        let isLoading = false;
 
-        // Check if already authenticated on load
+        // ═══════════════════════════════════════════
+        // INIT
+        // ═══════════════════════════════════════════
         if (logsPassword) {
             testAuthAndInitialize();
         }
 
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+L = Clear console
+            if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+                e.preventDefault();
+                clearConsole();
+            }
+            // Ctrl+K = Focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('search-filter').focus();
+            }
+            // Escape = Close sidebar
+            if (e.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+
+        // Track scroll position for scroll-to-bottom FAB
+        document.addEventListener('DOMContentLoaded', () => {
+            const consoleEl = document.getElementById('console-scroll');
+            if (consoleEl) {
+                consoleEl.addEventListener('scroll', updateScrollFab);
+            }
+        });
+
+        // ═══════════════════════════════════════════
+        // AUTH
+        // ═══════════════════════════════════════════
         async function handleLogin(e) {
             e.preventDefault();
             const passwordInput = document.getElementById('password').value;
             const errorMsg = document.getElementById('error-msg');
-            
-            errorMsg.style.display = 'none';
+            const loginBtn = document.getElementById('login-btn');
 
-            // Set logsPassword first so inner loadFileList and WS calls use it
+            errorMsg.style.display = 'none';
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;border-width:2px;"></div> Authenticating...';
+
             logsPassword = passwordInput;
 
-            const success = await loadFileList(passwordInput);
-            if (success) {
-                localStorage.setItem('logs_password', logsPassword);
-                
-                document.getElementById('login-card').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'grid';
-            } else {
+            try {
+                const success = await loadFileList(passwordInput);
+                if (success) {
+                    localStorage.setItem('logs_password', logsPassword);
+                    document.getElementById('login-card').style.display = 'none';
+                    const dashboard = document.getElementById('dashboard');
+                    dashboard.style.display = 'grid';
+                    // Trigger reflow for animation
+                    void dashboard.offsetWidth;
+                } else {
+                    errorMsg.style.display = 'block';
+                    document.getElementById('password').value = '';
+                    logsPassword = '';
+                }
+            } catch (err) {
                 errorMsg.style.display = 'block';
-                document.getElementById('password').value = '';
                 logsPassword = '';
             }
+
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg> Authenticate';
         }
 
         async function testAuthAndInitialize() {
@@ -723,7 +1207,9 @@
             location.reload();
         }
 
-        // Mobile Sidebar controls
+        // ═══════════════════════════════════════════
+        // SIDEBAR
+        // ═══════════════════════════════════════════
         function openSidebar() {
             document.getElementById('sidebar').classList.add('open');
             document.getElementById('backdrop').style.display = 'block';
@@ -734,6 +1220,9 @@
             document.getElementById('backdrop').style.display = 'none';
         }
 
+        // ═══════════════════════════════════════════
+        // FILE LIST
+        // ═══════════════════════════════════════════
         async function loadFileList(pwd) {
             try {
                 const response = await fetch('/api/logs/files', {
@@ -752,21 +1241,24 @@
                 listContainer.innerHTML = '';
 
                 if (files.length === 0) {
-                    listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem;">No log files found</div>';
+                    listContainer.innerHTML = '<div style="color: var(--text-dim); font-size: 0.8rem; padding: 0.75rem; text-align: center;">No log files found</div>';
                     return true;
                 }
 
                 files.forEach((file, index) => {
                     const item = document.createElement('div');
                     item.className = 'file-item';
-                    item.innerText = file;
+                    item.innerHTML = `
+                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(file)}</span>
+                    `;
                     item.onclick = () => {
                         selectFile(file, item);
                         closeSidebar();
                     };
                     listContainer.appendChild(item);
 
-                    // Auto select the first file (usually the latest one)
+                    // Auto-select the first (latest) file
                     if (index === 0 && !activeFile) {
                         selectFile(file, item);
                     } else if (file === activeFile) {
@@ -782,36 +1274,48 @@
         }
 
         function selectFile(filename, element) {
-            // Remove active status from all
             document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
-            
+
             activeFile = filename;
-            element.classList.add('active');
+            if (element) element.classList.add('active');
             document.getElementById('active-filename').innerText = filename;
 
-            // Connect to WebSocket stream for this file
+            // Show loading state
+            showLoadingState();
+
+            // Connect WebSocket for this file
             connectLogsWs();
         }
 
+        // ═══════════════════════════════════════════
+        // CONNECTION STATUS
+        // ═══════════════════════════════════════════
         function updateConnectionStatus(status) {
             const badge = document.getElementById('connection-status');
             const text = document.getElementById('status-text');
 
-            if (status === 'live') {
-                badge.className = 'status-badge live';
-                text.innerText = 'Live Streaming';
-            } else if (status === 'history') {
-                badge.className = 'status-badge';
-                text.innerText = 'Static History';
-            } else if (status === 'connecting') {
-                badge.className = 'status-badge';
-                text.innerText = 'Connecting...';
-            } else {
-                badge.className = 'status-badge';
-                text.innerText = 'Disconnected';
+            switch (status) {
+                case 'live':
+                    badge.className = 'status-badge live';
+                    text.innerText = 'Live';
+                    break;
+                case 'history':
+                    badge.className = 'status-badge';
+                    text.innerText = 'History';
+                    break;
+                case 'connecting':
+                    badge.className = 'status-badge connecting';
+                    text.innerText = 'Connecting';
+                    break;
+                default:
+                    badge.className = 'status-badge';
+                    text.innerText = 'Disconnected';
             }
         }
 
+        // ═══════════════════════════════════════════
+        // WEBSOCKET
+        // ═══════════════════════════════════════════
         function connectLogsWs() {
             if (!activeFile) return;
 
@@ -830,12 +1334,17 @@
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/api/logs/ws?password=${encodeURIComponent(logsPassword)}&file_name=${encodeURIComponent(activeFile)}`;
 
-            ws = new WebSocket(wsUrl);
+            try {
+                ws = new WebSocket(wsUrl);
+            } catch (err) {
+                console.error("WebSocket creation failed:", err);
+                updateConnectionStatus('disconnected');
+                showErrorState("Failed to connect to WebSocket");
+                return;
+            }
 
             ws.onopen = () => {
-                // Determine if this is today's log file (if it is, status is 'live', else 'history')
-                // Note: The server will close subscription if not today's log file, but keeps connection open to send dump
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = getTodayStr();
                 if (activeFile.includes(todayStr)) {
                     updateConnectionStatus('live');
                 } else {
@@ -847,53 +1356,63 @@
                 const message = event.data;
 
                 if (message.startsWith('[INITIAL_DUMP]\n')) {
-                    // This is the history payload of the file
+                    // Initial dump of log file
                     const content = message.slice(15);
                     originalLogLines = content.split('\n').filter(line => line.trim() !== '');
-                    applyFilter();
+                    applyAllFilters();
+
+                    // If no lines, show empty state
+                    if (originalLogLines.length === 0) {
+                        showEmptyLogState();
+                    }
                 } else {
-                    // This is a live streamed log line!
-                    const isScrollAtBottom = checkIsScrollAtBottom();
-                    
+                    // Live streamed log line
+                    const wasAtBottom = checkIsScrollAtBottom();
+
                     originalLogLines.push(message);
-                    
-                    const query = document.getElementById('search-filter').value.toLowerCase().trim();
-                    if (!query || message.toLowerCase().includes(query)) {
+
+                    // Check if this line passes all current filters
+                    if (linePassesFilters(message)) {
                         const outputContainer = document.getElementById('log-output');
-                        
-                        // If it was empty or showing error
-                        if (outputContainer.innerText.startsWith('Select a') || outputContainer.innerText.startsWith('Failed to')) {
-                            outputContainer.innerHTML = '';
-                        }
-                        
+
+                        // Clear empty/loading/error states
+                        const emptyState = document.getElementById('empty-state');
+                        const loadingState = document.getElementById('loading-state');
+                        const errorState = document.getElementById('error-state');
+                        if (emptyState) emptyState.remove();
+                        if (loadingState) loadingState.remove();
+                        if (errorState) errorState.remove();
+
                         const div = document.createElement('div');
                         div.innerHTML = formatLogLine(message);
-                        // Extract log-line child node
                         const node = div.firstChild;
-                        outputContainer.appendChild(node);
+                        if (node) outputContainer.appendChild(node);
                     }
 
-                    // Recalculate stats dynamically
+                    // Recalculate stats
                     calculateStats(originalLogLines);
 
-                    if (isScrollAtBottom) {
+                    if (wasAtBottom) {
                         scrollToBottom();
                     }
+
+                    updateScrollFab();
                 }
             };
 
             ws.onclose = (event) => {
-                // If closed due to unauthorized, logout
-                if (event.code === 4001 || event.reason.includes('Unauthorized')) {
+                // Safely check the close reason (event.reason may be null/undefined)
+                const reason = event.reason || '';
+                if (event.code === 4001 || reason.includes('Unauthorized')) {
                     logout();
                     return;
                 }
 
                 updateConnectionStatus('disconnected');
 
-                // Try to reconnect in 5 seconds if it's today's live file
-                const todayStr = new Date().toISOString().split('T')[0];
-                if (activeFile.includes(todayStr)) {
+                // Reconnect if it's today's file
+                const todayStr = getTodayStr();
+                if (activeFile && activeFile.includes(todayStr)) {
                     reconnectTimeout = setTimeout(() => {
                         connectLogsWs();
                     }, 5000);
@@ -905,128 +1424,227 @@
             };
         }
 
-        function applyFilter() {
-            const query = document.getElementById('search-filter').value.toLowerCase().trim();
-            const outputContainer = document.getElementById('log-output');
-            
-            const isScrollAtBottom = checkIsScrollAtBottom();
+        // ═══════════════════════════════════════════
+        // LOG PARSING & FORMATTING
+        // ═══════════════════════════════════════════
 
-            let matchedLines = originalLogLines;
-            if (query) {
-                matchedLines = originalLogLines.filter(line => line.toLowerCase().includes(query));
+        /**
+         * Parse a log line with format:
+         * [YYYY-MM-DD HH:MM:SS] METHOD /uri STATUS DURATIONms
+         * or special lines like [CACHE HIT], [CACHE MISS], etc.
+         */
+        function parseLogLine(line) {
+            // Match special log types
+            if (line.includes('[CACHE HIT]')) return { type: 'cache-hit', raw: line };
+            if (line.includes('[CACHE MISS]')) return { type: 'cache-miss', raw: line };
+            if (line.includes('[CACHE EXPIRED]')) return { type: 'cache-expired', raw: line };
+            if (line.includes('[UPSTREAM FETCH SUCCESS]')) return { type: 'upstream', raw: line };
+
+            // Parse request log: [YYYY-MM-DD HH:MM:SS] METHOD /uri STATUS DURATIONms
+            const match = line.match(/^(\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\])\s+(\w+)\s+(\S+)\s+(\d{3})\s+(\d+ms)$/);
+            if (match) {
+                return {
+                    type: 'request',
+                    raw: line,
+                    time: match[1],
+                    method: match[2],
+                    uri: match[3],
+                    status: parseInt(match[4], 10),
+                    statusStr: match[4],
+                    duration: match[5],
+                    durationMs: parseInt(match[5], 10)
+                };
             }
 
-            // Calculate stats on all parsed lines
-            calculateStats(originalLogLines);
-
-            if (matchedLines.length === 0) {
-                outputContainer.innerHTML = '<span style="color: var(--text-muted);">No matching log entries found.</span>';
-                return;
+            // Fallback: try a looser match for lines that might have extra content
+            const looseMatch = line.match(/^(\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\])\s+(\w+)\s+(\S+)\s+(\d{3})\s*(.*)$/);
+            if (looseMatch) {
+                const durMatch = (looseMatch[5] || '').match(/(\d+)ms/);
+                return {
+                    type: 'request',
+                    raw: line,
+                    time: looseMatch[1],
+                    method: looseMatch[2],
+                    uri: looseMatch[3],
+                    status: parseInt(looseMatch[4], 10),
+                    statusStr: looseMatch[4],
+                    duration: durMatch ? durMatch[0] : '',
+                    durationMs: durMatch ? parseInt(durMatch[1], 10) : 0
+                };
             }
 
-            const formattedHtml = matchedLines.map(line => formatLogLine(line)).join('');
-            outputContainer.innerHTML = formattedHtml;
-
-            if (isScrollAtBottom) {
-                scrollToBottom();
-            }
+            return { type: 'unknown', raw: line };
         }
 
         function formatLogLine(line) {
-            let lineClass = "log-line";
-            
-            if (line.includes("[CACHE HIT]")) {
-                return `<span class="${lineClass} log-cache-hit">${escapeHtml(line)}</span>`;
-            }
-            if (line.includes("[CACHE MISS]")) {
-                return `<span class="${lineClass} log-cache-miss">${escapeHtml(line)}</span>`;
-            }
-            if (line.includes("[CACHE EXPIRED]")) {
-                return `<span class="${lineClass} log-cache-expired">${escapeHtml(line)}</span>`;
-            }
-            if (line.includes("[UPSTREAM FETCH SUCCESS]")) {
-                return `<span class="${lineClass} log-upstream">${escapeHtml(line)}</span>`;
-            }
+            const parsed = parseLogLine(line);
 
-            // Parse request log
-            const parts = line.split(' ');
-            if (parts.length >= 5) {
-                const time = parts[0] + ' ' + parts[1]; // [YYYY-MM-DD HH:MM:SS]
-                const method = parts[2];
-                const uri = parts[3];
-                const status = parts[4];
-                const duration = parts[5]; // e.g. 45ms
+            switch (parsed.type) {
+                case 'cache-hit':
+                    return `<span class="log-line log-cache-hit">${escapeHtml(line)}</span>`;
+                case 'cache-miss':
+                    return `<span class="log-line log-cache-miss">${escapeHtml(line)}</span>`;
+                case 'cache-expired':
+                    return `<span class="log-line log-cache-expired">${escapeHtml(line)}</span>`;
+                case 'upstream':
+                    return `<span class="log-line log-upstream">${escapeHtml(line)}</span>`;
+                case 'request': {
+                    const methodClass = `method-${parsed.method.toLowerCase()}`;
+                    const statusGroup = Math.floor(parsed.status / 100);
+                    const statusClass = `status-${statusGroup}xx`;
+                    const errorLineClass = statusGroup >= 4 ? ' log-error-line' : '';
 
-                let methodSpan = `<span class="method-${method.toLowerCase()}">${escapeHtml(method)}</span>`;
-                
-                let statusGroup = status[0];
-                let statusSpan = `<span class="status-${statusGroup}xx">${escapeHtml(status)}</span>`;
-
-                let durationSpan = '';
-                if (duration) {
-                    const durMs = parseInt(duration);
-                    if (durMs > 1000) {
-                        durationSpan = `<span class="duration-critical">${escapeHtml(duration)}</span>`;
-                    } else if (durMs > 300) {
-                        durationSpan = `<span class="duration-slow">${escapeHtml(duration)}</span>`;
-                    } else {
-                        durationSpan = `<span style="color: #6b7280">${escapeHtml(duration)}</span>`;
+                    let durationHtml = '';
+                    if (parsed.duration) {
+                        let durClass = 'log-duration';
+                        if (parsed.durationMs > 1000) durClass = 'duration-critical';
+                        else if (parsed.durationMs > 300) durClass = 'duration-slow';
+                        durationHtml = ` <span class="${durClass}">${escapeHtml(parsed.duration)}</span>`;
                     }
+
+                    return `<span class="log-line${errorLineClass}"><span class="log-time">${escapeHtml(parsed.time)}</span> <span class="log-method ${methodClass}">${escapeHtml(parsed.method)}</span> <span class="log-uri">${escapeHtml(parsed.uri)}</span> <span class="${statusClass}">${escapeHtml(parsed.statusStr)}</span>${durationHtml}</span>`;
                 }
-
-                return `<span class="${lineClass}"><span class="log-time">${escapeHtml(time)}</span> ${methodSpan} <span style="color: #e5e7eb">${escapeHtml(uri)}</span> ${statusSpan} ${durationSpan}</span>`;
+                default:
+                    return `<span class="log-line">${escapeHtml(line)}</span>`;
             }
-
-            return `<span class="${lineClass}">${escapeHtml(line)}</span>`;
         }
 
+        // ═══════════════════════════════════════════
+        // FILTERING
+        // ═══════════════════════════════════════════
+        function linePassesFilters(line) {
+            // Text search filter
+            const query = document.getElementById('search-filter').value.toLowerCase().trim();
+            if (query && !line.toLowerCase().includes(query)) return false;
+
+            // Tab filter
+            if (filterTab !== 'all') {
+                const parsed = parseLogLine(line);
+                switch (filterTab) {
+                    case '2xx': return parsed.type === 'request' && parsed.status >= 200 && parsed.status < 300;
+                    case '3xx': return parsed.type === 'request' && parsed.status >= 300 && parsed.status < 400;
+                    case '4xx': return parsed.type === 'request' && parsed.status >= 400 && parsed.status < 500;
+                    case '5xx': return parsed.type === 'request' && parsed.status >= 500;
+                    case 'slow': return parsed.type === 'request' && parsed.durationMs > 500;
+                    case 'cache': return parsed.type === 'cache-hit' || parsed.type === 'cache-miss' || parsed.type === 'cache-expired';
+                }
+            }
+
+            return true;
+        }
+
+        function applyAllFilters() {
+            const outputContainer = document.getElementById('log-output');
+            const wasAtBottom = checkIsScrollAtBottom();
+
+            // Calculate stats on ALL lines (unfiltered)
+            calculateStats(originalLogLines);
+
+            // Apply filters
+            const matchedLines = originalLogLines.filter(line => linePassesFilters(line));
+
+            if (matchedLines.length === 0) {
+                if (originalLogLines.length === 0) {
+                    showEmptyLogState();
+                } else {
+                    outputContainer.innerHTML = '<div class="console-empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><div class="empty-title">No matching entries</div><div class="empty-desc">Try adjusting your search query or filter tabs</div></div>';
+                }
+                return;
+            }
+
+            // Use document fragment for performance
+            const fragment = document.createDocumentFragment();
+            const tempDiv = document.createElement('div');
+
+            // For very large log sets, batch render
+            const html = matchedLines.map(line => formatLogLine(line)).join('');
+            tempDiv.innerHTML = html;
+            while (tempDiv.firstChild) {
+                fragment.appendChild(tempDiv.firstChild);
+            }
+
+            outputContainer.innerHTML = '';
+            outputContainer.appendChild(fragment);
+
+            if (wasAtBottom) {
+                scrollToBottom();
+            }
+
+            updateScrollFab();
+        }
+
+        function debouncedApplyFilter() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                applyAllFilters();
+            }, 150);
+        }
+
+        function setFilterTab(tab, element) {
+            filterTab = tab;
+            document.querySelectorAll('.filter-tab').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            applyAllFilters();
+        }
+
+        // ═══════════════════════════════════════════
+        // STATS CALCULATION
+        // ═══════════════════════════════════════════
         function calculateStats(lines) {
             let totalRequests = 0;
             let cacheHits = 0;
+            let cacheMisses = 0;
             let totalLatency = 0;
             let latencyCount = 0;
             let errors = 0;
 
-            lines.forEach(line => {
-                if (line.includes("[CACHE HIT]")) {
-                    cacheHits++;
-                }
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.includes('[CACHE HIT]')) cacheHits++;
+                if (line.includes('[CACHE MISS]')) cacheMisses++;
 
-                const parts = line.split(' ');
-                if (parts.length >= 5 && parts[0].startsWith('[')) {
+                const parsed = parseLogLine(line);
+                if (parsed.type === 'request') {
                     totalRequests++;
-                    
-                    const status = parts[4];
-                    if (status.startsWith('4') || status.startsWith('5')) {
-                        errors++;
-                    }
-
-                    const duration = parts[5];
-                    if (duration && duration.endsWith('ms')) {
-                        const ms = parseInt(duration);
-                        if (!isNaN(ms)) {
-                            totalLatency += ms;
-                            latencyCount++;
-                        }
+                    if (parsed.status >= 400) errors++;
+                    if (parsed.durationMs > 0) {
+                        totalLatency += parsed.durationMs;
+                        latencyCount++;
                     }
                 }
-            });
-
-            let cacheMisses = lines.filter(l => l.includes("[CACHE MISS]")).length;
-            let hitRate = 0;
-            if (cacheHits + cacheMisses > 0) {
-                hitRate = Math.round((cacheHits / (cacheHits + cacheMisses)) * 100);
             }
 
+            const hitRate = (cacheHits + cacheMisses > 0) ? Math.round((cacheHits / (cacheHits + cacheMisses)) * 100) : 0;
             const avgLatency = latencyCount > 0 ? Math.round(totalLatency / latencyCount) : 0;
             const errorRate = totalRequests > 0 ? Math.round((errors / totalRequests) * 100) : 0;
 
-            document.getElementById('stat-total').innerText = totalRequests;
+            document.getElementById('stat-total').innerText = totalRequests.toLocaleString();
             document.getElementById('stat-cache-rate').innerText = hitRate + '%';
             document.getElementById('stat-latency').innerText = avgLatency + 'ms';
             document.getElementById('stat-errors').innerText = errorRate + '%';
         }
 
+        // ═══════════════════════════════════════════
+        // UI STATES
+        // ═══════════════════════════════════════════
+        function showLoadingState() {
+            const outputContainer = document.getElementById('log-output');
+            outputContainer.innerHTML = '<div class="console-empty" id="loading-state"><div class="loading-spinner"></div><div class="empty-title">Loading logs...</div><div class="empty-desc">Connecting to server and fetching log data</div></div>';
+        }
+
+        function showEmptyLogState() {
+            const outputContainer = document.getElementById('log-output');
+            outputContainer.innerHTML = '<div class="console-empty" id="empty-state"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div class="empty-title">Log file is empty</div><div class="empty-desc">No entries recorded yet. New requests will appear here in real-time.</div></div>';
+        }
+
+        function showErrorState(msg) {
+            const outputContainer = document.getElementById('log-output');
+            outputContainer.innerHTML = `<div class="console-empty" id="error-state"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div class="empty-title" style="color: var(--danger);">Connection Error</div><div class="empty-desc">${escapeHtml(msg)}</div></div>`;
+        }
+
+        // ═══════════════════════════════════════════
+        // SCROLL MANAGEMENT
+        // ═══════════════════════════════════════════
         function checkIsScrollAtBottom() {
             const el = document.getElementById('console-scroll');
             return (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
@@ -1035,6 +1653,25 @@
         function scrollToBottom() {
             const el = document.getElementById('console-scroll');
             el.scrollTop = el.scrollHeight;
+            updateScrollFab();
+        }
+
+        function updateScrollFab() {
+            const fab = document.getElementById('scroll-fab');
+            if (!fab) return;
+            const atBottom = checkIsScrollAtBottom();
+            fab.classList.toggle('visible', !atBottom);
+        }
+
+        // ═══════════════════════════════════════════
+        // ACTIONS
+        // ═══════════════════════════════════════════
+        function clearConsole() {
+            originalLogLines = [];
+            const outputContainer = document.getElementById('log-output');
+            outputContainer.innerHTML = '';
+            calculateStats([]);
+            showEmptyLogState();
         }
 
         function downloadLogs() {
@@ -1051,13 +1688,21 @@
             URL.revokeObjectURL(url);
         }
 
+        // ═══════════════════════════════════════════
+        // UTILITIES
+        // ═══════════════════════════════════════════
         function escapeHtml(text) {
+            if (!text) return '';
             return text
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+
+        function getTodayStr() {
+            return new Date().toISOString().split('T')[0];
         }
     </script>
 </body>
