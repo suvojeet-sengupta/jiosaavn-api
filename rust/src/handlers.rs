@@ -243,7 +243,10 @@ pub async fn get_song_suggestions(
     station_params.insert("entity_type".to_string(), "queue".to_string());
     
     let station_raw = use_fetch("webradio.createEntityStation", station_params, None).await?;
-    let station_id = station_raw["stationid"].as_str().ok_or_else(|| AppError::Internal("Failed to create station".to_string()))?;
+    let station_id = match station_raw["stationid"].as_str() {
+        Some(id) => id,
+        None => return Ok(Json(ApiResponse { success: true, data: vec![] })),
+    };
 
     // Now, get songs from the station
     let mut radio_params = HashMap::new();
