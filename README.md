@@ -44,14 +44,21 @@ For a detailed list of changes, see the [CHANGELOG](CHANGELOG.md).
    cd jiosaavn-api
    ```
 
-2. Launch the development server:
+2. Configure environment variables (optional):
+
+   Copy the template environment file and customize it:
+   ```sh
+   cp .env.example .env
+   ```
+
+3. Launch the development server:
 
    ```sh
    cd rust
    cargo run
    ```
 
-The server will start on `http://0.0.0.0:3000`.
+The server will start on `http://0.0.0.0:3000` (or the port defined in your `.env` file).
 
 ## 📜 License
 

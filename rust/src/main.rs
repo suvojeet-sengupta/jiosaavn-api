@@ -22,6 +22,9 @@ use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn main() {
+    // Load environment variables from .env file
+    let _ = dotenvy::dotenv();
+
     // 1. Initialize tracer logging
     tracing_subscriber::fmt::init();
 

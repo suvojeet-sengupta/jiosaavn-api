@@ -25,12 +25,47 @@ struct CacheEntry {
 static CACHE: Lazy<Mutex<HashMap<String, CacheEntry>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 static INSERT_COUNT: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(0));
 
-// Client Instance
-static CLIENT: Lazy<Client> = Lazy::new(|| {
-    Client::builder()
-        .timeout(Duration::from_secs(10))
-        .build()
-        .unwrap()
+// Client Instance Pool (for proxy rotation)
+static CLIENTS: Lazy<Vec<Client>> = Lazy::new(|| {
+    let mut pool = Vec::new();
+
+    // Default client (no proxy)
+    pool.push(
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .unwrap(),
+    );
+
+    // Add clients with proxies if PROXY_POOL is defined
+    if let Ok(proxy_pool_str) = std::env::var("PROXY_POOL") {
+        for proxy_url in proxy_pool_str.split(',') {
+            let proxy_url = proxy_url.trim();
+            if !proxy_url.is_empty() {
+                match reqwest::Proxy::all(proxy_url) {
+                    Ok(proxy) => {
+                        match Client::builder()
+                            .proxy(proxy)
+                            .timeout(Duration::from_secs(10))
+                            .build()
+                        {
+                            Ok(client) => {
+                                pool.push(client);
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to create reqwest client for proxy {}: {}", proxy_url, e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to parse proxy URL {}: {}", proxy_url, e);
+                    }
+                }
+            }
+        }
+    }
+
+    pool
 });
 
 fn get_ttl(endpoint: &str) -> Duration {
@@ -105,8 +140,18 @@ pub async fn use_fetch(
         .copied()
         .unwrap_or(USER_AGENTS[0]);
 
+    // Select a client (rotating proxies if configured)
+    let client = {
+        let pool = &*CLIENTS;
+        if pool.len() > 1 {
+            pool.choose(&mut rand::thread_rng()).unwrap_or(&pool[0])
+        } else {
+            &pool[0]
+        }
+    };
+
     // Send HTTP Request
-    let response = CLIENT
+    let response = client
         .get(url.as_str())
         .header("User-Agent", user_agent)
         .header("Content-Type", "application/json")

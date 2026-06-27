@@ -215,7 +215,17 @@ const ENDPOINTS: Endpoint[] = [
 ];
 
 function App() {
-  const [baseUrl, setBaseUrl] = useState('http://localhost:3000');
+  const [baseUrl, setBaseUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      // If we are on Vite dev server (usually port 5173 or similar), default to localhost:3000.
+      // Otherwise, use the current origin of the page.
+      if (window.location.hostname === 'localhost' && window.location.port !== '3000' && window.location.port !== '') {
+        return 'http://localhost:3000';
+      }
+      return window.location.origin;
+    }
+    return 'http://localhost:3000';
+  });
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
   const [activeEndpoint, setActiveEndpoint] = useState<Endpoint>(ENDPOINTS[0]);
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
