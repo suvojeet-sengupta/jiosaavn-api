@@ -531,9 +531,11 @@
             
             errorMsg.style.display = 'none';
 
+            // Set logsPassword first so inner loadActiveLogFile calls use the correct password
+            logsPassword = passwordInput;
+
             const success = await loadFileList(passwordInput);
             if (success) {
-                logsPassword = passwordInput;
                 localStorage.setItem('logs_password', logsPassword);
                 
                 document.getElementById('login-card').style.display = 'none';
@@ -544,6 +546,7 @@
             } else {
                 errorMsg.style.display = 'block';
                 document.getElementById('password').value = '';
+                logsPassword = '';
             }
         }
 
