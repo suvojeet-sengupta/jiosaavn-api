@@ -25,47 +25,12 @@ struct CacheEntry {
 static CACHE: Lazy<Mutex<HashMap<String, CacheEntry>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 static INSERT_COUNT: Lazy<Mutex<usize>> = Lazy::new(|| Mutex::new(0));
 
-// Client Instance Pool (for proxy rotation)
-static CLIENTS: Lazy<Vec<Client>> = Lazy::new(|| {
-    let mut pool = Vec::new();
-
-    // Default client (no proxy)
-    pool.push(
-        Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .unwrap(),
-    );
-
-    // Add clients with proxies if PROXY_POOL is defined
-    if let Ok(proxy_pool_str) = std::env::var("PROXY_POOL") {
-        for proxy_url in proxy_pool_str.split(',') {
-            let proxy_url = proxy_url.trim();
-            if !proxy_url.is_empty() {
-                match reqwest::Proxy::all(proxy_url) {
-                    Ok(proxy) => {
-                        match Client::builder()
-                            .proxy(proxy)
-                            .timeout(Duration::from_secs(5)) // Lower timeout for proxies
-                            .build()
-                        {
-                            Ok(client) => {
-                                pool.push(client);
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to create reqwest client for proxy {}: {}", proxy_url, e);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to parse proxy URL {}: {}", proxy_url, e);
-                    }
-                }
-            }
-        }
-    }
-
-    pool
+// Client Instance
+static CLIENT: Lazy<Client> = Lazy::new(|| {
+    Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .unwrap()
 });
 
 fn get_ttl(endpoint: &str) -> Duration {
@@ -140,50 +105,14 @@ pub async fn use_fetch(
         .copied()
         .unwrap_or(USER_AGENTS[0]);
 
-    // Select a client (rotating proxies if configured)
-    let pool = &*CLIENTS;
-    let selected_index = if pool.len() > 1 {
-        // Pick a random client from the pool (index 0 is direct connection)
-        rand::random::<usize>() % pool.len()
-    } else {
-        0
-    };
-
-    let mut client = &pool[selected_index];
-
     // Send HTTP Request
-    let mut response = client
+    let response = CLIENT
         .get(url.as_str())
         .header("User-Agent", user_agent)
         .header("Content-Type", "application/json")
         .send()
-        .await;
-
-    // If using a proxy (index > 0) and it fails/times out or returns non-success, fallback to direct connection
-    if selected_index != 0 {
-        let needs_fallback = match &response {
-            Ok(res) => !res.status().is_success(),
-            Err(_) => true,
-        };
-
-        if needs_fallback {
-            if let Err(e) = &response {
-                eprintln!("Proxy request failed (index {}): {}. Falling back to direct connection.", selected_index, e);
-            } else if let Ok(res) = &response {
-                eprintln!("Proxy request returned status {} (index {}). Falling back to direct connection.", res.status(), selected_index);
-            }
-
-            client = &pool[0];
-            response = client
-                .get(url.as_str())
-                .header("User-Agent", user_agent)
-                .header("Content-Type", "application/json")
-                .send()
-                .await;
-        }
-    }
-
-    let response = response.map_err(|e| format!("HTTP request failed: {}", e))?;
+        .await
+        .map_err(|e| format!("HTTP request failed: {}", e))?;
 
     if !response.status().is_success() {
         return Err(format!("HTTP request failed with status: {}", response.status()));
