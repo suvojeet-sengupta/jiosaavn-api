@@ -94,10 +94,10 @@ async fn main() {
         .route("/api/logs/ws", get(handlers::logs_ws))
         .route("/api/logs/clear", post(handlers::clear_log_file))
         // Middlewares
+        .layer(cors)
+        .layer(TraceLayer::new_for_http())
         .layer(GovernorLayer { config: governor_conf })
         .layer(middleware::from_fn(logging_middleware))
-        .layer(TraceLayer::new_for_http())
-        .layer(cors)
         .fallback(not_found_handler);
 
     // 4. Bind and start Axum server
@@ -202,12 +202,25 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
     let method = req.method().to_string();
     let uri = req.uri().to_string();
     
+    // Smart Logging: Extract IP Address
+    let ip = req
+        .extensions()
+        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        .map(|ci| ci.0.ip().to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+    
     let response = next.run(req).await;
+    
+    // Smart Logging: Ignore /logs and /api/logs requests to avoid spamming our own logs
+    if uri.starts_with("/logs") || uri.starts_with("/api/logs") {
+        return response;
+    }
     
     let duration = start.elapsed();
     let status = response.status().as_u16();
     
-    let log_line = format!("{} {} {} {}ms", method, uri, status, duration.as_millis());
+    // Add IP to the log format
+    let log_line = format!("[IP: {}] {} {} {} {}ms", ip, method, uri, status, duration.as_millis());
     let _ = LOG_CHANNEL.send(log_line);
     
     response
