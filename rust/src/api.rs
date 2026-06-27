@@ -41,13 +41,13 @@ fn get_ttl(endpoint: &str) -> Duration {
         | "artist.getArtistPageDetails"
         | "artist.getArtistMoreSong"
         | "artist.getArtistMoreAlbum" => Duration::from_secs(6 * 3600), // 6 hours
-        "song.getDetails"
-        | "webapi.get"
-        | "autocomplete.get"
+        "autocomplete.get"
         | "search.getResults"
         | "search.getAlbumResults"
         | "search.getArtistResults"
-        | "search.getPlaylistResults" => Duration::from_secs(30 * 60), // 30 mins
+        | "search.getPlaylistResults" => Duration::from_secs(3600), // 1 hour
+        "song.getDetails"
+        | "webapi.get" => Duration::from_secs(30 * 60), // 30 mins
         "webradio.getSong" => Duration::from_secs(5 * 60),            // 5 mins
         _ => Duration::ZERO,                                          // No cache
     }
