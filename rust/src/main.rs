@@ -22,6 +22,66 @@ use tower_http::trace::TraceLayer;
 use bb8_redis::RedisConnectionManager;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_governor::key_extractor::SmartIpKeyExtractor;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        handlers::get_songs,
+        handlers::get_song_by_id,
+        handlers::get_song_suggestions,
+        handlers::get_song_lyrics,
+        handlers::search_all,
+        handlers::search_songs,
+        handlers::search_artists,
+        handlers::get_album_details,
+        handlers::get_playlist_details,
+        handlers::get_artist_details,
+        handlers::search_albums,
+        handlers::search_playlists
+    ),
+    components(
+        schemas(
+            models::Song,
+            models::AlbumInfo,
+            models::ArtistGroup,
+            models::Artist,
+            models::Album,
+            models::Lyrics,
+            models::SongSearchItem,
+            models::AlbumSearchItem,
+            models::ArtistSearchItem,
+            models::PlaylistSearchItem,
+            models::Playlist,
+            models::SearchResponse,
+            crypto::DownloadLink,
+            handlers::ArtistDetail,
+            models::SongSearchCategory,
+            models::AlbumSearchCategory,
+            models::ArtistSearchCategory,
+            models::PlaylistSearchCategory,
+            models::SongCategory,
+            models::ArtistCategory,
+            models::PlaylistCategory,
+            models::AlbumCategory,
+            models::ApiResponseSongList,
+            models::ApiResponseSongCategory,
+            models::ApiResponseArtistCategory,
+            models::ApiResponsePlaylistCategory,
+            models::ApiResponseAlbumCategory,
+            models::ApiResponseArtistDetail,
+            models::ApiResponseSearchResponse,
+            models::ApiResponseLyrics,
+            models::ApiResponseStringList,
+            models::ApiResponseString
+        )
+    ),
+    tags(
+        (name = "jiosaavn-api", description = "JioSaavn API endpoints")
+    )
+)]
+struct ApiDoc;
 
 #[tokio::main]
 async fn main() {
@@ -51,7 +111,7 @@ async fn main() {
     let cors = CorsLayer::permissive();
 
     // 2.5 Setup Rate Limiter (2 req/sec per IP, burst up to 10)
-    let governor_conf = Arc::new(
+    let governor_conf = std::sync::Arc::new(
         GovernorConfigBuilder::default()
             .per_second(2)
             .burst_size(10)
@@ -61,21 +121,11 @@ async fn main() {
     );
 
     // 3. Define routes
-    let dist_dir = if std::path::Path::new("./dist").exists() {
-        "./dist".to_string()
-    } else {
-        "../frontend/dist".to_string()
-    };
-
     let app = Router::new()
         // API Base Info
         .route("/", get(home_handler))
-        // API Docs / Playground
-        .nest_service(
-            "/docs",
-            tower_http::services::ServeDir::new(&dist_dir)
-                .fallback(tower_http::services::ServeFile::new(format!("{}/index.html", dist_dir))),
-        )
+        // Swagger UI
+        .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // API Endpoints
         .route("/api/search", get(handlers::search_all))
         .route("/api/search/songs", get(handlers::search_songs))
@@ -111,7 +161,36 @@ async fn main() {
     println!("Started Rust server: http://{}", addr);
     
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    println!("✅ Shutdown signal received, starting graceful shutdown...");
 }
 
 async fn home_handler() -> impl IntoResponse {
@@ -131,7 +210,7 @@ async fn not_found_handler() -> impl IntoResponse {
 }
 
 pub static LOG_BROADCAST: Lazy<tokio::sync::broadcast::Sender<String>> = Lazy::new(|| {
-    let (tx, _) = tokio::sync::broadcast::channel(100);
+    let (tx, _) = tokio::sync::broadcast::channel(1024);
     tx
 });
 
@@ -147,52 +226,83 @@ pub static LOG_CHANNEL: Lazy<tokio::sync::mpsc::UnboundedSender<String>> = Lazy:
 
         let mut current_date = String::new();
         let mut current_file: Option<tokio::io::BufWriter<tokio::fs::File>> = None;
+        let mut needs_flush = false;
 
-        while let Some(raw_msg) = rx.recv().await {
-            let now = Local::now();
-            let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
-            let date_str = now.format("%Y-%m-%d").to_string();
-            
-            let log_line = format!("[{}] {}", timestamp, raw_msg);
-            
-            // Print to stdout
-            println!("{}", log_line);
+        // Interval-based flush: flush at most every 500ms instead of every write
+        let mut flush_interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+        flush_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-            // If date changed, rotate file
-            if date_str != current_date || current_file.is_none() {
-                current_date = date_str.clone();
-                let log_path = format!("{}/requests_{}.log", log_dir, current_date);
-                
-                // Flush and close previous file if it exists
-                if let Some(mut file) = current_file.take() {
-                    let _ = file.flush().await;
-                }
+        loop {
+            tokio::select! {
+                msg = rx.recv() => {
+                    match msg {
+                        Some(raw_msg) => {
+                            let now = Local::now();
+                            let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
+                            let date_str = now.format("%Y-%m-%d").to_string();
+                            
+                            let log_line = format!("[{}] {}", timestamp, raw_msg);
+                            
+                            // Print to stdout
+                            println!("{}", log_line);
 
-                match OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&log_path)
-                    .await
-                {
-                    Ok(file) => {
-                        current_file = Some(tokio::io::BufWriter::new(file));
+                            // If date changed, rotate file
+                            if date_str != current_date || current_file.is_none() {
+                                current_date = date_str.clone();
+                                let log_path = format!("{}/requests_{}.log", log_dir, current_date);
+                                
+                                // Flush and close previous file if it exists
+                                if let Some(mut file) = current_file.take() {
+                                    let _ = file.flush().await;
+                                    needs_flush = false;
+                                }
+
+                                match OpenOptions::new()
+                                    .create(true)
+                                    .append(true)
+                                    .open(&log_path)
+                                    .await
+                                {
+                                    Ok(file) => {
+                                        current_file = Some(tokio::io::BufWriter::new(file));
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Failed to open log file {}: {}", log_path, e);
+                                    }
+                                }
+                            }
+
+                            if let Some(ref mut file) = current_file {
+                                let file_log_line = format!("{}\n", log_line);
+                                if let Err(e) = file.write_all(file_log_line.as_bytes()).await {
+                                    eprintln!("Failed to write request log: {}", e);
+                                } else {
+                                    needs_flush = true;
+                                }
+                            }
+
+                            // Broadcast to all active WebSocket connections
+                            let _ = LOG_BROADCAST.send(log_line);
+                        }
+                        None => {
+                            // Channel closed, flush and exit
+                            if let Some(mut file) = current_file.take() {
+                                let _ = file.flush().await;
+                            }
+                            break;
+                        }
                     }
-                    Err(e) => {
-                        eprintln!("Failed to open log file {}: {}", log_path, e);
+                }
+                _ = flush_interval.tick() => {
+                    // Periodic flush to disk
+                    if needs_flush {
+                        if let Some(ref mut file) = current_file {
+                            let _ = file.flush().await;
+                        }
+                        needs_flush = false;
                     }
                 }
             }
-
-            if let Some(ref mut file) = current_file {
-                let file_log_line = format!("{}\n", log_line);
-                if let Err(e) = file.write_all(file_log_line.as_bytes()).await {
-                    eprintln!("Failed to write request log: {}", e);
-                }
-                let _ = file.flush().await;
-            }
-
-            // Broadcast to all active WebSocket connections
-            let _ = LOG_BROADCAST.send(log_line);
         }
     });
     

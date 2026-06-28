@@ -490,6 +490,25 @@
             animation: pulse 0.8s infinite;
         }
 
+        .status-badge.error {
+            color: var(--danger);
+            background-color: var(--danger-bg);
+        }
+
+        .status-badge.disconnected {
+            color: var(--text-dim);
+            background-color: var(--bg-element);
+        }
+
+        .status-badge.error .status-dot {
+            background-color: var(--danger);
+            animation: pulse 1s infinite;
+        }
+
+        .status-badge.disconnected .status-dot {
+            background-color: var(--text-dim);
+        }
+
         @keyframes pulse {
             0% { transform: scale(0.85); opacity: 0.5; }
             50% { transform: scale(1.15); opacity: 1; }
@@ -1118,8 +1137,10 @@
         let logsPassword = localStorage.getItem('logs_password') || '';
         let activeFile = '';
         let originalLogLines = [];
+        let filesList = [];
         let ws = null;
         let reconnectTimeout = null;
+        let reconnectAttempts = 0;
         let filterTab = 'all';
         let debounceTimer = null;
         let isLoading = false;
@@ -1243,6 +1264,7 @@
                 if (!result.success) return false;
 
                 const files = result.data || [];
+                filesList = files;
                 const listContainer = document.getElementById('file-list');
                 listContainer.innerHTML = '';
 
@@ -1283,6 +1305,7 @@
             document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
 
             activeFile = filename;
+            reconnectAttempts = 0;
             if (element) element.classList.add('active');
             document.getElementById('active-filename').innerText = filename;
 
@@ -1313,8 +1336,16 @@
                     badge.className = 'status-badge connecting';
                     text.innerText = 'Connecting';
                     break;
+                case 'reconnecting':
+                    badge.className = 'status-badge connecting';
+                    text.innerText = 'Reconnecting';
+                    break;
+                case 'error':
+                    badge.className = 'status-badge error';
+                    text.innerText = 'Error';
+                    break;
                 default:
-                    badge.className = 'status-badge';
+                    badge.className = 'status-badge disconnected';
                     text.innerText = 'Disconnected';
             }
         }
@@ -1350,8 +1381,8 @@
             }
 
             ws.onopen = () => {
-                // Determine if live based on if it's the newest file on the server
-                if (files && files.length > 0 && activeFile === files[0]) {
+                reconnectAttempts = 0;
+                if (filesList && filesList.length > 0 && activeFile === filesList[0]) {
                     updateConnectionStatus('live');
                 } else {
                     updateConnectionStatus('history');
@@ -1371,6 +1402,14 @@
                     if (originalLogLines.length === 0) {
                         showEmptyLogState();
                     }
+                } else if (message.startsWith('[SYSTEM]')) {
+                    // System warning messages (e.g. dropped messages due to slow connection)
+                    const outputContainer = document.getElementById('log-output');
+                    const div = document.createElement('div');
+                    div.innerHTML = `<span class="log-line" style="color: var(--warning); background: var(--warning-bg);">${escapeHtml(message)}</span>`;
+                    const node = div.firstChild;
+                    if (node) outputContainer.appendChild(node);
+                    if (checkIsScrollAtBottom()) scrollToBottom();
                 } else {
                     // Live streamed log line
                     const wasAtBottom = checkIsScrollAtBottom();
@@ -1407,20 +1446,27 @@
             };
 
             ws.onclose = (event) => {
-                // Safely check the close reason (event.reason may be null/undefined)
                 const reason = event.reason || '';
                 if (event.code === 4001 || reason.includes('Unauthorized')) {
                     logout();
                     return;
                 }
 
-                updateConnectionStatus('disconnected');
-
-                // Reconnect if it's the newest live file
-                if (files && files.length > 0 && activeFile === files[0]) {
-                    reconnectTimeout = setTimeout(() => {
-                        connectLogsWs();
-                    }, 5000);
+                // Only reconnect for today's (live) file with exponential backoff
+                if (filesList && filesList.length > 0 && activeFile === filesList[0]) {
+                    reconnectAttempts++;
+                    if (reconnectAttempts <= 10) {
+                        updateConnectionStatus('reconnecting');
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
+                        reconnectTimeout = setTimeout(() => {
+                            connectLogsWs();
+                        }, delay);
+                    } else {
+                        updateConnectionStatus('error');
+                        showErrorState('Connection lost after 10 attempts. Click a log file to retry.');
+                    }
+                } else {
+                    updateConnectionStatus('disconnected');
                 }
             };
 

@@ -2,8 +2,9 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use des::cipher::{generic_array::GenericArray, BlockDecrypt, KeyInit};
 use des::Des;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DownloadLink {
     pub quality: String,
     pub url: String,

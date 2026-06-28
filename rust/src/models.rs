@@ -1,7 +1,7 @@
 use crate::crypto::DownloadLink;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Song {
     pub id: String,
@@ -24,7 +24,7 @@ pub struct Song {
     pub download_url: Vec<DownloadLink>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AlbumInfo {
     pub id: Option<String>,
@@ -32,7 +32,7 @@ pub struct AlbumInfo {
     pub url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistGroup {
     pub primary: Vec<Artist>,
@@ -40,7 +40,7 @@ pub struct ArtistGroup {
     pub all: Vec<Artist>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Artist {
     pub id: String,
@@ -51,7 +51,7 @@ pub struct Artist {
     pub url: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Album {
     pub id: String,
@@ -61,7 +61,7 @@ pub struct Album {
     pub image: Vec<DownloadLink>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Lyrics {
     pub lyrics: String,
@@ -70,14 +70,24 @@ pub struct Lyrics {
 }
 
 // Search result categories
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+#[aliases(
+    SongSearchCategory = SearchResultCategory<SongSearchItem>,
+    AlbumSearchCategory = SearchResultCategory<AlbumSearchItem>,
+    ArtistSearchCategory = SearchResultCategory<ArtistSearchItem>,
+    PlaylistSearchCategory = SearchResultCategory<PlaylistSearchItem>,
+    SongCategory = SearchResultCategory<Song>,
+    ArtistCategory = SearchResultCategory<Artist>,
+    PlaylistCategory = SearchResultCategory<Playlist>,
+    AlbumCategory = SearchResultCategory<Album>
+)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultCategory<T> {
     pub results: Vec<T>,
     pub position: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SongSearchItem {
     pub id: String,
@@ -92,7 +102,7 @@ pub struct SongSearchItem {
     pub language: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AlbumSearchItem {
     pub id: String,
@@ -107,7 +117,7 @@ pub struct AlbumSearchItem {
     pub song_ids: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistSearchItem {
     pub id: String,
@@ -118,7 +128,7 @@ pub struct ArtistSearchItem {
     pub position: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaylistSearchItem {
     pub id: String,
@@ -130,7 +140,7 @@ pub struct PlaylistSearchItem {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Playlist {
     pub id: String,
@@ -140,7 +150,7 @@ pub struct Playlist {
 }
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     pub albums: SearchResultCategory<AlbumSearchItem>,
@@ -150,7 +160,19 @@ pub struct SearchResponse {
     pub top_query: SearchResultCategory<SongSearchItem>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+#[aliases(
+    ApiResponseSongList = ApiResponse<Vec<Song>>,
+    ApiResponseSongCategory = ApiResponse<SearchResultCategory<Song>>,
+    ApiResponseArtistCategory = ApiResponse<SearchResultCategory<Artist>>,
+    ApiResponsePlaylistCategory = ApiResponse<SearchResultCategory<Playlist>>,
+    ApiResponseAlbumCategory = ApiResponse<SearchResultCategory<Album>>,
+    ApiResponseArtistDetail = ApiResponse<crate::handlers::ArtistDetail>,
+    ApiResponseSearchResponse = ApiResponse<SearchResponse>,
+    ApiResponseLyrics = ApiResponse<Lyrics>,
+    ApiResponseStringList = ApiResponse<Vec<String>>,
+    ApiResponseString = ApiResponse<String>
+)]
 pub struct ApiResponse<T> {
     pub success: bool,
     pub data: T,
@@ -163,7 +185,7 @@ pub enum AppError {
     Internal(String),
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 struct ErrorResponse {
     success: bool,
     message: String,

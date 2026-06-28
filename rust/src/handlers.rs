@@ -141,12 +141,20 @@ fn parse_playlist(v: &Value) -> Playlist {
 
 // --- Handler Logic ---
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::IntoParams)]
 pub struct SongsQuery {
     pub ids: Option<String>,
     pub link: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/songs",
+    params(SongsQuery),
+    responses(
+        (status = 200, description = "Get songs by IDs or link", body = ApiResponseSongList)
+    )
+)]
 pub async fn get_songs(
     Query(query): Query<SongsQuery>,
 ) -> Result<Json<ApiResponse<Vec<Song>>>, AppError> {
@@ -203,6 +211,16 @@ pub async fn get_songs(
     Ok(Json(ApiResponse { success: true, data: songs_list }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/songs/{id}",
+    params(
+        ("id" = String, Path, description = "Song ID")
+    ),
+    responses(
+        (status = 200, description = "Get song details by ID", body = ApiResponseSongList)
+    )
+)]
 pub async fn get_song_by_id(
     AxumPath(id): AxumPath<String>,
 ) -> Result<Json<ApiResponse<Vec<Song>>>, AppError> {
@@ -226,11 +244,22 @@ pub async fn get_song_by_id(
     Ok(Json(ApiResponse { success: true, data: songs }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::IntoParams)]
 pub struct SuggestionsQuery {
     pub limit: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/songs/{id}/suggestions",
+    params(
+        ("id" = String, Path, description = "Song ID"),
+        SuggestionsQuery
+    ),
+    responses(
+        (status = 200, description = "Get song suggestions", body = ApiResponseSongList)
+    )
+)]
 pub async fn get_song_suggestions(
     AxumPath(id): AxumPath<String>,
     Query(query): Query<SuggestionsQuery>,
@@ -268,6 +297,16 @@ pub async fn get_song_suggestions(
     Ok(Json(ApiResponse { success: true, data: songs }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/songs/{id}/lyrics",
+    params(
+        ("id" = String, Path, description = "Song ID")
+    ),
+    responses(
+        (status = 200, description = "Get song lyrics", body = ApiResponseLyrics)
+    )
+)]
 pub async fn get_song_lyrics(
     AxumPath(id): AxumPath<String>,
 ) -> Result<Json<ApiResponse<Lyrics>>, AppError> {
@@ -287,7 +326,7 @@ pub async fn get_song_lyrics(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::IntoParams)]
 pub struct SearchQuery {
     pub query: String,
 }
@@ -302,6 +341,14 @@ fn parse_category<T>(cat: &Value, mapper: impl Fn(&Value) -> T) -> SearchResultC
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/search",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Global search", body = ApiResponseSearchResponse)
+    )
+)]
 pub async fn search_all(
     Query(query): Query<SearchQuery>,
 ) -> Result<Json<ApiResponse<SearchResponse>>, AppError> {
@@ -367,13 +414,21 @@ pub async fn search_all(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::IntoParams)]
 pub struct CategorySearchQuery {
     pub query: String,
     pub page: Option<i32>,
     pub limit: Option<i32>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/search/songs",
+    params(CategorySearchQuery),
+    responses(
+        (status = 200, description = "Search songs", body = ApiResponseSongCategory)
+    )
+)]
 pub async fn search_songs(
     Query(query): Query<CategorySearchQuery>,
 ) -> Result<Json<ApiResponse<SearchResultCategory<Song>>>, AppError> {
@@ -394,6 +449,14 @@ pub async fn search_songs(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/search/artists",
+    params(CategorySearchQuery),
+    responses(
+        (status = 200, description = "Search artists", body = ApiResponseArtistCategory)
+    )
+)]
 pub async fn search_artists(
     Query(query): Query<CategorySearchQuery>,
 ) -> Result<Json<ApiResponse<SearchResultCategory<Artist>>>, AppError> {
@@ -414,11 +477,19 @@ pub async fn search_artists(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::IntoParams)]
 pub struct IdQuery {
     pub id: String,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/albums",
+    params(IdQuery),
+    responses(
+        (status = 200, description = "Get album details", body = ApiResponseSongList)
+    )
+)]
 pub async fn get_album_details(
     Query(query): Query<IdQuery>,
 ) -> Result<Json<ApiResponse<Vec<Song>>>, AppError> {
@@ -434,6 +505,14 @@ pub async fn get_album_details(
     Ok(Json(ApiResponse { success: true, data: songs }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/playlists",
+    params(IdQuery),
+    responses(
+        (status = 200, description = "Get playlist details", body = ApiResponseSongCategory)
+    )
+)]
 pub async fn get_playlist_details(
     Query(query): Query<IdQuery>,
 ) -> Result<Json<ApiResponse<SearchResultCategory<Song>>>, AppError> {
@@ -452,7 +531,7 @@ pub async fn get_playlist_details(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistQuery {
     pub page: Option<i32>,
@@ -460,7 +539,7 @@ pub struct ArtistQuery {
     pub album_count: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistDetail {
     pub id: String,
@@ -472,6 +551,17 @@ pub struct ArtistDetail {
     pub top_albums: Vec<Album>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/artists/{id}",
+    params(
+        ("id" = String, Path, description = "Artist ID"),
+        ArtistQuery
+    ),
+    responses(
+        (status = 200, description = "Get artist details", body = ApiResponseArtistDetail)
+    )
+)]
 pub async fn get_artist_details(
     AxumPath(id): AxumPath<String>,
     Query(query): Query<ArtistQuery>,
@@ -508,6 +598,14 @@ pub async fn get_artist_details(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/search/albums",
+    params(CategorySearchQuery),
+    responses(
+        (status = 200, description = "Search albums", body = ApiResponseAlbumCategory)
+    )
+)]
 pub async fn search_albums(
     Query(query): Query<CategorySearchQuery>,
 ) -> Result<Json<ApiResponse<SearchResultCategory<Album>>>, AppError> {
@@ -528,6 +626,14 @@ pub async fn search_albums(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/search/playlists",
+    params(CategorySearchQuery),
+    responses(
+        (status = 200, description = "Search playlists", body = ApiResponsePlaylistCategory)
+    )
+)]
 pub async fn search_playlists(
     Query(query): Query<CategorySearchQuery>,
 ) -> Result<Json<ApiResponse<SearchResultCategory<Playlist>>>, AppError> {
@@ -554,7 +660,7 @@ pub async fn logs_ui() -> Html<&'static str> {
     Html(include_str!("logs.html"))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct LogsAuthPayload {
     pub password: String,
 }
@@ -568,16 +674,18 @@ pub async fn get_log_files(
         return Err(AppError::BadRequest("Unauthorized: Incorrect password".to_string()));
     }
 
-    // 2. Read logs directory
+    // 2. Read logs directory (async to avoid blocking the Tokio runtime)
     let log_dir = "logs";
     let mut files = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(log_dir) {
-        for entry in entries.flatten() {
+    if let Ok(mut entries) = tokio::fs::read_dir(log_dir).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
-            if path.is_file() {
-                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-                    if file_name.starts_with("requests_") && file_name.ends_with(".log") {
-                        files.push(file_name.to_string());
+            if let Ok(meta) = tokio::fs::metadata(&path).await {
+                if meta.is_file() {
+                    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                        if file_name.starts_with("requests_") && file_name.ends_with(".log") {
+                            files.push(file_name.to_string());
+                        }
                     }
                 }
             }
@@ -593,7 +701,7 @@ pub async fn get_log_files(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct ViewLogPayload {
     pub password: String,
     pub file_name: String,
@@ -614,9 +722,9 @@ pub async fn view_log_file(
         return Err(AppError::BadRequest("Invalid log file name".to_string()));
     }
 
-    // 3. Read file
+    // 3. Read file (async to avoid blocking the Tokio runtime)
     let path = format!("logs/{}", file_name);
-    match std::fs::read_to_string(&path) {
+    match tokio::fs::read_to_string(&path).await {
         Ok(content) => Ok(Json(ApiResponse {
             success: true,
             data: content,
@@ -640,9 +748,9 @@ pub async fn clear_log_file(
         return Err(AppError::BadRequest("Invalid log file name".to_string()));
     }
 
-    // 3. Truncate (clear) the file
+    // 3. Truncate (clear) the file (async to avoid blocking the Tokio runtime)
     let path = format!("logs/{}", file_name);
-    match std::fs::write(&path, "") {
+    match tokio::fs::write(&path, "").await {
         Ok(_) => Ok(Json(ApiResponse {
             success: true,
             data: format!("Log file {} cleared successfully", file_name),
@@ -702,9 +810,9 @@ async fn handle_ws(socket: WebSocket, file_name: String) {
         file_name.clone()
     };
 
-    // 2. Load existing history
+    // 2. Load existing history (async read to avoid blocking)
     let path = format!("logs/{}", target_file);
-    if let Ok(content) = std::fs::read_to_string(&path) {
+    if let Ok(content) = tokio::fs::read_to_string(&path).await {
         // Send initial dump of logs
         let _ = sender.send(Message::Text(format!("[INITIAL_DUMP]\n{}", content))).await;
     } else {
@@ -719,16 +827,25 @@ async fn handle_ws(socket: WebSocket, file_name: String) {
         // Subscribe to global log broadcast channel
         let mut rx = crate::LOG_BROADCAST.subscribe();
 
-        // Spawn a task to listen to client messages (disconnect detection)
+        // Ping/pong keepalive: send ping every 30s to detect dead connections
+        let mut ping_interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+        ping_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // Skip the first immediate tick
+        ping_interval.tick().await;
+
+        // Spawn a task to listen to client messages (disconnect + pong detection)
+        let (pong_tx, mut pong_rx) = tokio::sync::mpsc::channel::<()>(1);
         let mut read_task = tokio::spawn(async move {
             while let Some(Ok(msg)) = receiver.next().await {
-                if let Message::Close(_) = msg {
-                    break;
+                match msg {
+                    Message::Close(_) => break,
+                    Message::Pong(_) => { let _ = pong_tx.try_send(()); },
+                    _ => {}
                 }
             }
         });
 
-        // Loop and stream new log lines
+        // Loop and stream new log lines + keepalive pings
         loop {
             tokio::select! {
                 _ = &mut read_task => {
@@ -741,10 +858,30 @@ async fn handle_ws(socket: WebSocket, file_name: String) {
                                 break;
                             }
                         }
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            // Notify client about dropped messages
+                            let _ = sender.send(Message::Text(
+                                format!("[SYSTEM] Warning: {} log messages were dropped due to slow connection", n)
+                            )).await;
+                        }
                         Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                             break;
                         }
+                    }
+                }
+                _ = ping_interval.tick() => {
+                    // Send WebSocket ping for keepalive
+                    if sender.send(Message::Ping(vec![b'k', b'a'])).await.is_err() {
+                        break;
+                    }
+                    // Wait up to 10s for a pong response
+                    let pong_timeout = tokio::time::timeout(
+                        tokio::time::Duration::from_secs(10),
+                        pong_rx.recv()
+                    ).await;
+                    if pong_timeout.is_err() {
+                        // No pong received — connection is dead
+                        break;
                     }
                 }
             }

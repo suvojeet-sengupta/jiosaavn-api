@@ -15,6 +15,7 @@ services:
       - PORT=3000
       - RUST_LOG=info
       - REDIS_URL=redis://jiosaavn-redis:6379/0
+      - TZ=Asia/Kolkata
     env_file:
       - .env
     restart: unless-stopped

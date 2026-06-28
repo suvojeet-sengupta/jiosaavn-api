@@ -48,11 +48,25 @@ fn get_ttl(endpoint: &str) -> Duration {
     }
 }
 
+use std::sync::atomic::{AtomicUsize, AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+static CONSECUTIVE_ERRORS: AtomicUsize = AtomicUsize::new(0);
+static CIRCUIT_OPEN_UNTIL: AtomicU64 = AtomicU64::new(0);
+
 pub async fn use_fetch(
     endpoint: &str,
     params: HashMap<String, String>,
     context: Option<&str>,
 ) -> Result<Value, String> {
+    // 1. Check Circuit Breaker
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let open_until = CIRCUIT_OPEN_UNTIL.load(Ordering::Relaxed);
+    if now < open_until {
+        let _ = crate::LOG_CHANNEL.send(format!("[CIRCUIT BREAKER] Rejecting request to JioSaavn for {}s", open_until - now));
+        return Err("JioSaavn API is currently unreachable. Circuit breaker is OPEN.".to_string());
+    }
+
     let mut url = url::Url::parse("https://www.jiosaavn.com/api.php").unwrap();
     {
         let mut query = url.query_pairs_mut();
@@ -99,12 +113,32 @@ pub async fn use_fetch(
         .header("User-Agent", user_agent)
         .header("Content-Type", "application/json")
         .send()
-        .await
-        .map_err(|e| format!("HTTP request failed: {}", e))?;
+        .await;
 
-    if !response.status().is_success() {
-        return Err(format!("HTTP request failed with status: {}", response.status()));
-    }
+    let response = match response {
+        Ok(res) => {
+            if !res.status().is_success() {
+                let fails = CONSECUTIVE_ERRORS.fetch_add(1, Ordering::Relaxed) + 1;
+                if fails >= 5 {
+                    let next_open = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 60;
+                    CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
+                    let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to 5 consecutive upstream errors".to_string());
+                }
+                return Err(format!("HTTP request failed with status: {}", res.status()));
+            }
+            CONSECUTIVE_ERRORS.store(0, Ordering::Relaxed); // Reset on success
+            res
+        }
+        Err(e) => {
+            let fails = CONSECUTIVE_ERRORS.fetch_add(1, Ordering::Relaxed) + 1;
+            if fails >= 5 {
+                let next_open = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 60;
+                CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
+                let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to network failure".to_string());
+            }
+            return Err(format!("HTTP request failed: {}", e));
+        }
+    };
 
     let data: Value = response
         .json()
