@@ -10,14 +10,51 @@ use std::time::{Duration, Instant};
 pub type RedisPool = bb8::Pool<RedisConnectionManager>;
 pub static REDIS_POOL: tokio::sync::OnceCell<RedisPool> = tokio::sync::OnceCell::const_new();
 
-// 1. User Agent List
-static USER_AGENTS: &[&str] = &[
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
-    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/605.1.15",
+struct ClientIdentity {
+    user_agent: &'static str,
+    sec_ch_ua: &'static str,
+    sec_ch_ua_mobile: &'static str,
+    sec_ch_ua_platform: &'static str,
+}
+
+// 1. Client Identity List (User Agents + Client Hints)
+static CLIENT_IDENTITIES: &[ClientIdentity] = &[
+    ClientIdentity {
+        user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+        sec_ch_ua: "\"Google Chrome\";v=\"149\", \"Chromium\";v=\"149\", \"Not.A/Brand\";v=\"24\"",
+        sec_ch_ua_mobile: "?0",
+        sec_ch_ua_platform: "\"Windows\"",
+    },
+    ClientIdentity {
+        user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+        sec_ch_ua: "\"Google Chrome\";v=\"149\", \"Chromium\";v=\"149\", \"Not.A/Brand\";v=\"24\"",
+        sec_ch_ua_mobile: "?0",
+        sec_ch_ua_platform: "\"macOS\"",
+    },
+    ClientIdentity {
+        user_agent: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Mobile Safari/537.36",
+        sec_ch_ua: "\"Google Chrome\";v=\"149\", \"Chromium\";v=\"149\", \"Not.A/Brand\";v=\"24\"",
+        sec_ch_ua_mobile: "?1",
+        sec_ch_ua_platform: "\"Android\"",
+    },
+    ClientIdentity {
+        user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
+        sec_ch_ua: "",
+        sec_ch_ua_mobile: "?0",
+        sec_ch_ua_platform: "\"Windows\"",
+    },
+    ClientIdentity {
+        user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+        sec_ch_ua: "",
+        sec_ch_ua_mobile: "?0",
+        sec_ch_ua_platform: "\"macOS\"",
+    },
+    ClientIdentity {
+        user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+        sec_ch_ua: "",
+        sec_ch_ua_mobile: "?1",
+        sec_ch_ua_platform: "\"iOS\"",
+    },
 ];
 
 // Client Instance
@@ -98,22 +135,33 @@ pub async fn use_fetch(
         }
     }
 
-    // Random User Agent
-    let user_agent = USER_AGENTS
+    // Random Client Identity
+    let identity = CLIENT_IDENTITIES
         .choose(&mut rand::thread_rng())
-        .copied()
-        .unwrap_or(USER_AGENTS[0]);
+        .unwrap_or(&CLIENT_IDENTITIES[0]);
 
     let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] Fetching upstream from JioSaavn for: {}", cache_key));
 
     let fetch_start = Instant::now();
-    // Send HTTP Request
-    let response = CLIENT
+    
+    // Build HTTP Request
+    let mut req = CLIENT
         .get(url.as_str())
-        .header("User-Agent", user_agent)
-        .header("Content-Type", "application/json")
-        .send()
-        .await;
+        .header("User-Agent", identity.user_agent)
+        .header("Content-Type", "application/json");
+
+    if !identity.sec_ch_ua.is_empty() {
+        req = req.header("Sec-CH-UA", identity.sec_ch_ua);
+    }
+    if !identity.sec_ch_ua_mobile.is_empty() {
+        req = req.header("Sec-CH-UA-Mobile", identity.sec_ch_ua_mobile);
+    }
+    if !identity.sec_ch_ua_platform.is_empty() {
+        req = req.header("Sec-CH-UA-Platform", identity.sec_ch_ua_platform);
+    }
+
+    // Send HTTP Request
+    let response = req.send().await;
 
     let response = match response {
         Ok(res) => {
