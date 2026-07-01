@@ -584,11 +584,16 @@ pub async fn get_artist_details(
         .map(|arr| arr.iter().map(parse_album).collect())
         .unwrap_or_default();
 
+    let name = str_val(&raw["name"]);
+    if name.is_empty() {
+        return Err(AppError::NotFound("Artist not found or invalid ID".to_string()));
+    }
+
     Ok(Json(ApiResponse {
         success: true,
         data: ArtistDetail {
             id: str_val(&raw["artistId"]),
-            name: str_val(&raw["name"]),
+            name,
             fan_count: opt_str_val(&raw["fan_count"]),
             wiki: opt_str_val(&raw["wiki"]),
             image: create_image_links(&str_val(&raw["image"])),

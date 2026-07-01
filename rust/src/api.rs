@@ -5,7 +5,9 @@ use serde_json::Value;
 use bb8_redis::{bb8, RedisConnectionManager};
 use redis::AsyncCommands;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::sync::{Mutex, OnceCell};
 
 pub type RedisPool = bb8::Pool<RedisConnectionManager>;
 pub static REDIS_POOL: tokio::sync::OnceCell<RedisPool> = tokio::sync::OnceCell::const_new();
@@ -91,6 +93,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 static CONSECUTIVE_ERRORS: AtomicUsize = AtomicUsize::new(0);
 static CIRCUIT_OPEN_UNTIL: AtomicU64 = AtomicU64::new(0);
 
+// Request coalescing: deduplicate in-flight requests for same cache key
+type FlightCache = Mutex<HashMap<String, Arc<OnceCell<Result<Value, String>>>>>;
+
+static FLIGHT_CACHE: Lazy<FlightCache> = Lazy::new(|| Mutex::new(HashMap::new()));
+
 pub async fn use_fetch(
     endpoint: &str,
     params: HashMap<String, String>,
@@ -142,6 +149,21 @@ pub async fn use_fetch(
 
     let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] Fetching upstream from JioSaavn for: {}", cache_key));
 
+    // Request coalescing: check if there's already an in-flight request for this key
+    let flight_cell = {
+        let mut flight_cache = FLIGHT_CACHE.lock().await;
+        flight_cache
+            .entry(cache_key.clone())
+            .or_insert_with(|| Arc::new(OnceCell::new()))
+            .clone()
+    };
+
+    // If another request already completed, return its result
+    if let Some(result) = flight_cell.get() {
+        let _ = crate::LOG_CHANNEL.send(format!("[FLIGHT HIT] Returning existing result for: {}", cache_key));
+        return result.clone();
+    }
+
     let fetch_start = Instant::now();
     
     // Build HTTP Request
@@ -172,7 +194,9 @@ pub async fn use_fetch(
                     CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
                     let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to 5 consecutive upstream errors".to_string());
                 }
-                return Err(format!("HTTP request failed with status: {}", res.status()));
+                let err = format!("HTTP request failed with status: {}", res.status());
+                let _ = flight_cell.set(Err(err.clone()));
+                return Err(err);
             }
             CONSECUTIVE_ERRORS.store(0, Ordering::Relaxed); // Reset on success
             res
@@ -184,7 +208,9 @@ pub async fn use_fetch(
                 CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
                 let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to network failure".to_string());
             }
-            return Err(format!("HTTP request failed: {}", e));
+            let err = format!("HTTP request failed: {}", e);
+            let _ = flight_cell.set(Err(err.clone()));
+            return Err(err);
         }
     };
 
@@ -196,7 +222,10 @@ pub async fn use_fetch(
     let fetch_duration = fetch_start.elapsed().as_millis();
     let _ = crate::LOG_CHANNEL.send(format!("[UPSTREAM FETCH SUCCESS] Key: {} (Took {}ms)", cache_key, fetch_duration));
 
-    // Cache the result
+    // Store result in flight cache for other waiters
+    let _ = flight_cell.set(Ok(data.clone()));
+
+    // Cache the result in Redis
     if ttl > Duration::ZERO {
         if let Some(pool) = REDIS_POOL.get() {
             if let Ok(mut conn) = pool.get().await {
@@ -206,6 +235,14 @@ pub async fn use_fetch(
             }
         }
     }
+
+    // Remove from flight cache after a short delay to allow late waiters
+    let cache_key_clone = cache_key.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let mut flight_cache = FLIGHT_CACHE.lock().await;
+        flight_cache.remove(&cache_key_clone);
+    });
 
     Ok(data)
 }
