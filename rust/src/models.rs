@@ -181,6 +181,7 @@ pub struct ApiResponse<T> {
 #[derive(Debug, Clone)]
 pub enum AppError {
     BadRequest(String),
+    Unauthorized(String),
     NotFound(String),
     Internal(String),
 }
@@ -195,6 +196,7 @@ impl axum::response::IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         let (status, message) = match self {
             AppError::BadRequest(msg) => (axum::http::StatusCode::BAD_REQUEST, msg),
+            AppError::Unauthorized(msg) => (axum::http::StatusCode::UNAUTHORIZED, msg),
             AppError::NotFound(msg) => (axum::http::StatusCode::NOT_FOUND, msg),
             AppError::Internal(msg) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, msg),
         };

@@ -8,9 +8,45 @@ use axum::{
 };
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use futures_util::{sink::SinkExt, stream::StreamExt};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+
+// --- Centralized Logs Authentication ---
+// Password is loaded once from the environment and cached for the process lifetime.
+// If LOGS_PASSWORD is not configured, all log access is denied (no insecure defaults).
+static LOGS_PASSWORD_VALUE: Lazy<Option<String>> = Lazy::new(|| {
+    std::env::var("LOGS_PASSWORD").ok().filter(|p| !p.is_empty())
+});
+
+/// Verify the provided password against the configured LOGS_PASSWORD.
+/// Uses constant-time comparison to prevent timing-based side-channel attacks.
+fn verify_logs_password(provided: &str) -> Result<(), AppError> {
+    match LOGS_PASSWORD_VALUE.as_deref() {
+        Some(correct) => {
+            if constant_time_eq(provided.as_bytes(), correct.as_bytes()) {
+                Ok(())
+            } else {
+                Err(AppError::Unauthorized("Incorrect password".to_string()))
+            }
+        }
+        None => Err(AppError::Unauthorized(
+            "Logs access is disabled: LOGS_PASSWORD is not configured".to_string(),
+        )),
+    }
+}
+
+/// Constant-time byte comparison to prevent timing attacks on password verification.
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    a.iter()
+        .zip(b.iter())
+        .fold(0u8, |acc, (x, y)| acc | (x ^ y))
+        == 0
+}
 
 // --- Helper Functions to Safely Extract Data from Raw Upstream JSON ---
 fn str_val(v: &Value) -> String {
@@ -673,11 +709,7 @@ pub struct LogsAuthPayload {
 pub async fn get_log_files(
     Json(payload): Json<LogsAuthPayload>,
 ) -> Result<Json<ApiResponse<Vec<String>>>, AppError> {
-    // 1. Verify password
-    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
-    if payload.password != correct_password {
-        return Err(AppError::BadRequest("Unauthorized: Incorrect password".to_string()));
-    }
+    verify_logs_password(&payload.password)?;
 
     // 2. Read logs directory (async to avoid blocking the Tokio runtime)
     let log_dir = "logs";
@@ -715,11 +747,7 @@ pub struct ViewLogPayload {
 pub async fn view_log_file(
     Json(payload): Json<ViewLogPayload>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    // 1. Verify password
-    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
-    if payload.password != correct_password {
-        return Err(AppError::BadRequest("Unauthorized: Incorrect password".to_string()));
-    }
+    verify_logs_password(&payload.password)?;
 
     // 2. Prevent directory traversal (sanitize file_name)
     let file_name = payload.file_name;
@@ -741,11 +769,7 @@ pub async fn view_log_file(
 pub async fn clear_log_file(
     Json(payload): Json<ViewLogPayload>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    // 1. Verify password
-    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
-    if payload.password != correct_password {
-        return Err(AppError::BadRequest("Unauthorized: Incorrect password".to_string()));
-    }
+    verify_logs_password(&payload.password)?;
 
     // 2. Prevent directory traversal (sanitize file_name)
     let file_name = payload.file_name;
@@ -775,16 +799,12 @@ pub async fn logs_ws(
     ws: WebSocketUpgrade,
     Query(params): Query<WsParams>,
 ) -> impl axum::response::IntoResponse {
-    let correct_password = std::env::var("LOGS_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
-    
-    // Authenticate
-    let authenticated = match params.password {
-        Some(ref pwd) => pwd == &correct_password,
-        None => false,
+    let auth_result = match params.password {
+        Some(ref pwd) => verify_logs_password(pwd),
+        None => Err(AppError::Unauthorized("Password required".to_string())),
     };
 
-    if !authenticated {
-        // Return 401 Unauthorized status and close
+    if auth_result.is_err() {
         return axum::response::Response::builder()
             .status(axum::http::StatusCode::UNAUTHORIZED)
             .body(axum::body::Body::empty())
