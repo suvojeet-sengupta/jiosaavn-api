@@ -19,8 +19,18 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: 45069
           script: |
+            # If the old folder exists, rename it to the new name
+            if [ -d "$HOME/jiosaavn-api" ]; then
+              mv $HOME/jiosaavn-api $HOME/hqaudio-api
+            fi
+            
+            # Clone the repository if it doesn't exist
+            if [ ! -d "$HOME/hqaudio-api" ]; then
+              git clone https://github.com/suvojeet-sengupta/jiosaavn-api.git $HOME/hqaudio-api
+            fi
+            
             # Navigate to the project directory on your VPS.
-            cd ~/hqaudio-api
+            cd $HOME/hqaudio-api
             
             # Pull the latest changes
             git pull origin main
