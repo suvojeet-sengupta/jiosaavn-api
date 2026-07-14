@@ -202,7 +202,7 @@ pub async fn get_songs(
     let endpoint = if let Some(link) = query.link {
         // extract link token
         let token = link
-            .split("hqaudio.com/song/")
+            .split("hqaudio.suvojeetsengupta.in/song/")
             .nth(1)
             .and_then(|s| s.split('/').nth(1))
             .and_then(|s| s.split('?').next())

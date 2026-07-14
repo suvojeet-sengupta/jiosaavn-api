@@ -161,7 +161,7 @@ pub async fn use_fetch(
     }
 
     // 2. Build the upstream URL (uses original param values, not normalized)
-    let mut url = url::Url::parse("https://www.hqaudio.com/api.php").unwrap();
+    let mut url = url::Url::parse("https://www.jiosaavn.com/api.php").unwrap();
     {
         let mut query = url.query_pairs_mut();
         query.append_pair("__call", endpoint);
