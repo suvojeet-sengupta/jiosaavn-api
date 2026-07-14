@@ -4,7 +4,7 @@ use reqwest::Client;
 use serde_json::Value;
 use bb8_redis::{bb8, RedisConnectionManager};
 use redis::AsyncCommands;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, OnceCell};
@@ -59,13 +59,21 @@ static CLIENT_IDENTITIES: &[ClientIdentity] = &[
     },
 ];
 
-// Client Instance
+// Client Instance — tuned for connection reuse and upstream compression
 static CLIENT: Lazy<Client> = Lazy::new(|| {
     Client::builder()
         .timeout(Duration::from_secs(10))
+        .pool_max_idle_per_host(10)
+        .pool_idle_timeout(Duration::from_secs(90))
+        .tcp_nodelay(true)
+        .gzip(true)
+        .brotli(true)
         .build()
         .unwrap()
 });
+
+/// Redis connection acquisition timeout — skip cache if Redis is slow
+const REDIS_CONN_TIMEOUT: Duration = Duration::from_millis(50);
 
 fn get_ttl(endpoint: &str) -> Duration {
     match endpoint {
@@ -87,16 +95,57 @@ fn get_ttl(endpoint: &str) -> Duration {
     }
 }
 
+/// Returns true if the endpoint is a search-type endpoint where query
+/// normalization (lowercasing) improves cache hit rates.
+fn is_search_endpoint(endpoint: &str) -> bool {
+    matches!(
+        endpoint,
+        "autocomplete.get"
+            | "search.getResults"
+            | "search.getAlbumResults"
+            | "search.getArtistResults"
+            | "search.getPlaylistResults"
+    )
+}
+
 use std::sync::atomic::{AtomicUsize, AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static CONSECUTIVE_ERRORS: AtomicUsize = AtomicUsize::new(0);
 static CIRCUIT_OPEN_UNTIL: AtomicU64 = AtomicU64::new(0);
 
-// Request coalescing: deduplicate in-flight requests for same cache key
-type FlightCache = Mutex<HashMap<String, Arc<OnceCell<Result<Value, String>>>>>;
+// Request coalescing: deduplicate in-flight requests for same cache key.
+// Each entry holds a OnceCell that is initialized exactly once via
+// `get_or_try_init`, so all waiters share a single upstream fetch.
+// Errors are NOT stored — only successful Values are cached in the cell.
+type FlightCache = Mutex<HashMap<String, Arc<OnceCell<Value>>>>;
 
 static FLIGHT_CACHE: Lazy<FlightCache> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Build a **normalized, deterministic** cache key from the endpoint and
+/// user-supplied params. Params are sorted alphabetically (via BTreeMap),
+/// and for search endpoints the `q` / `query` values are lowercased so
+/// that case-insensitive duplicates hit the same key.
+fn build_cache_key(endpoint: &str, params: &HashMap<String, String>) -> String {
+    let mut sorted: BTreeMap<&str, String> = BTreeMap::new();
+    let normalize_query = is_search_endpoint(endpoint);
+
+    for (k, v) in params {
+        if normalize_query && (k == "q" || k == "query") {
+            sorted.insert(k.as_str(), v.to_lowercase());
+        } else {
+            sorted.insert(k.as_str(), v.clone());
+        }
+    }
+
+    let param_str: String = sorted
+        .iter()
+        .map(|(k, v)| format!("{}={}", k, v))
+        .collect::<Vec<_>>()
+        .join("&");
+
+    format!("{}:{}", endpoint, param_str)
+}
 
 pub async fn use_fetch(
     endpoint: &str,
@@ -111,6 +160,7 @@ pub async fn use_fetch(
         return Err("HqAudio API is currently unreachable. Circuit breaker is OPEN.".to_string());
     }
 
+    // 2. Build the upstream URL (uses original param values, not normalized)
     let mut url = url::Url::parse("https://www.hqaudio.com/api.php").unwrap();
     {
         let mut query = url.query_pairs_mut();
@@ -125,12 +175,14 @@ pub async fn use_fetch(
         }
     }
 
-    let cache_key = format!("{}:{}", endpoint, url.query().unwrap_or(""));
+    // 3. Build a NORMALIZED cache key — sorted params, search queries lowercased
+    let cache_key = build_cache_key(endpoint, &params);
     let ttl = get_ttl(endpoint);
-    // Try cache lookup
+
+    // 4. Try cache lookup (with Redis connection timeout guard)
     if ttl > Duration::ZERO {
         if let Some(pool) = REDIS_POOL.get() {
-            if let Ok(mut conn) = pool.get().await {
+            if let Ok(Ok(mut conn)) = tokio::time::timeout(REDIS_CONN_TIMEOUT, pool.get()).await {
                 let cached_data: Result<String, _> = conn.get(&cache_key).await;
                 if let Ok(data_str) = cached_data {
                     if let Ok(parsed) = serde_json::from_str(&data_str) {
@@ -142,14 +194,11 @@ pub async fn use_fetch(
         }
     }
 
-    // Random Client Identity
-    let identity = CLIENT_IDENTITIES
-        .choose(&mut rand::thread_rng())
-        .unwrap_or(&CLIENT_IDENTITIES[0]);
-
     let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] Fetching upstream from HqAudio for: {}", cache_key));
 
-    // Request coalescing: check if there's already an in-flight request for this key
+    // 5. Request coalescing — grab or create a flight cell, then use
+    //    get_or_try_init so only the FIRST caller performs the upstream
+    //    fetch while all others await the same future.
     let flight_cell = {
         let mut flight_cache = FLIGHT_CACHE.lock().await;
         flight_cache
@@ -158,90 +207,98 @@ pub async fn use_fetch(
             .clone()
     };
 
-    // If another request already completed, return its result
-    if let Some(result) = flight_cell.get() {
-        let _ = crate::LOG_CHANNEL.send(format!("[FLIGHT HIT] Returning existing result for: {}", cache_key));
-        return result.clone();
-    }
+    // Capture the URL string for the closure (params already encoded above)
+    let url_str = url.to_string();
+    let cache_key_for_init = cache_key.clone();
 
-    let fetch_start = Instant::now();
-    
-    // Build HTTP Request
-    let mut req = CLIENT
-        .get(url.as_str())
-        .header("User-Agent", identity.user_agent)
-        .header("Content-Type", "application/json");
+    let result = flight_cell
+        .get_or_try_init(|| async {
+            let fetch_start = Instant::now();
 
-    if !identity.sec_ch_ua.is_empty() {
-        req = req.header("Sec-CH-UA", identity.sec_ch_ua);
-    }
-    if !identity.sec_ch_ua_mobile.is_empty() {
-        req = req.header("Sec-CH-UA-Mobile", identity.sec_ch_ua_mobile);
-    }
-    if !identity.sec_ch_ua_platform.is_empty() {
-        req = req.header("Sec-CH-UA-Platform", identity.sec_ch_ua_platform);
-    }
+            // Random Client Identity
+            let identity = CLIENT_IDENTITIES
+                .choose(&mut rand::thread_rng())
+                .unwrap_or(&CLIENT_IDENTITIES[0]);
 
-    // Send HTTP Request
-    let response = req.send().await;
+            // Build HTTP Request
+            let mut req = CLIENT
+                .get(&url_str)
+                .header("User-Agent", identity.user_agent)
+                .header("Content-Type", "application/json");
 
-    let response = match response {
-        Ok(res) => {
-            if !res.status().is_success() {
-                let fails = CONSECUTIVE_ERRORS.fetch_add(1, Ordering::Relaxed) + 1;
-                if fails >= 5 {
-                    let next_open = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 60;
-                    CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
-                    let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to 5 consecutive upstream errors".to_string());
+            if !identity.sec_ch_ua.is_empty() {
+                req = req.header("Sec-CH-UA", identity.sec_ch_ua);
+            }
+            if !identity.sec_ch_ua_mobile.is_empty() {
+                req = req.header("Sec-CH-UA-Mobile", identity.sec_ch_ua_mobile);
+            }
+            if !identity.sec_ch_ua_platform.is_empty() {
+                req = req.header("Sec-CH-UA-Platform", identity.sec_ch_ua_platform);
+            }
+
+            // Send HTTP Request
+            let response = req.send().await;
+
+            let response = match response {
+                Ok(res) => {
+                    if !res.status().is_success() {
+                        let fails = CONSECUTIVE_ERRORS.fetch_add(1, Ordering::Relaxed) + 1;
+                        if fails >= 5 {
+                            let next_open = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 60;
+                            CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
+                            let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to 5 consecutive upstream errors".to_string());
+                        }
+                        return Err(format!("HTTP request failed with status: {}", res.status()));
+                    }
+                    CONSECUTIVE_ERRORS.store(0, Ordering::Relaxed); // Reset on success
+                    res
                 }
-                let err = format!("HTTP request failed with status: {}", res.status());
-                let _ = flight_cell.set(Err(err.clone()));
-                return Err(err);
-            }
-            CONSECUTIVE_ERRORS.store(0, Ordering::Relaxed); // Reset on success
-            res
-        }
-        Err(e) => {
-            let fails = CONSECUTIVE_ERRORS.fetch_add(1, Ordering::Relaxed) + 1;
-            if fails >= 5 {
-                let next_open = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 60;
-                CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
-                let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to network failure".to_string());
-            }
-            let err = format!("HTTP request failed: {}", e);
-            let _ = flight_cell.set(Err(err.clone()));
-            return Err(err);
-        }
-    };
+                Err(e) => {
+                    let fails = CONSECUTIVE_ERRORS.fetch_add(1, Ordering::Relaxed) + 1;
+                    if fails >= 5 {
+                        let next_open = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 60;
+                        CIRCUIT_OPEN_UNTIL.store(next_open, Ordering::Relaxed);
+                        let _ = crate::LOG_CHANNEL.send("[CIRCUIT BREAKER] Tripped OPEN due to network failure".to_string());
+                    }
+                    return Err(format!("HTTP request failed: {}", e));
+                }
+            };
 
-    let data: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse JSON response: {}", e))?;
+            let data: Value = response
+                .json()
+                .await
+                .map_err(|e| format!("Failed to parse JSON response: {}", e))?;
 
-    let fetch_duration = fetch_start.elapsed().as_millis();
-    let _ = crate::LOG_CHANNEL.send(format!("[UPSTREAM FETCH SUCCESS] Key: {} (Took {}ms)", cache_key, fetch_duration));
+            let fetch_duration = fetch_start.elapsed().as_millis();
+            let _ = crate::LOG_CHANNEL.send(format!("[UPSTREAM FETCH SUCCESS] Key: {} (Took {}ms)", cache_key_for_init, fetch_duration));
 
-    // Store result in flight cache for other waiters
-    let _ = flight_cell.set(Ok(data.clone()));
+            Ok(data)
+        })
+        .await?;
 
-    // Cache the result in Redis
+    let data = result.clone();
+
+    // 6. Background Redis write — don't block the response on cache storage
     if ttl > Duration::ZERO {
-        if let Some(pool) = REDIS_POOL.get() {
-            if let Ok(mut conn) = pool.get().await {
-                if let Ok(data_str) = serde_json::to_string(&data) {
-                    let _: Result<(), _> = conn.set_ex(&cache_key, data_str, ttl.as_secs()).await;
+        let cache_key_bg = cache_key.clone();
+        let data_bg = data.clone();
+        tokio::spawn(async move {
+            if let Some(pool) = REDIS_POOL.get() {
+                if let Ok(Ok(mut conn)) = tokio::time::timeout(REDIS_CONN_TIMEOUT, pool.get()).await {
+                    if let Ok(data_str) = serde_json::to_string(&data_bg) {
+                        let _: Result<(), _> = conn.set_ex(&cache_key_bg, data_str, ttl.as_secs()).await;
+                    }
                 }
             }
-        }
+        });
     }
 
     // Remove from flight cache after a short delay to allow late waiters
-    let cache_key_clone = cache_key.clone();
+    let cache_key_cleanup = cache_key.clone();
     tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let mut flight_cache = FLIGHT_CACHE.lock().await;
-        flight_cache.remove(&cache_key_clone);
+        flight_cache.remove(&cache_key_cleanup);
     });
 
     Ok(data)

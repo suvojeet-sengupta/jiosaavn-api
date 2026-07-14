@@ -18,6 +18,7 @@ use std::time::Instant;
 use tokio::fs::{create_dir_all, OpenOptions};
 use tokio::io::AsyncWriteExt;
 use tower_http::cors::CorsLayer;
+use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
 use bb8_redis::RedisConnectionManager;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
@@ -94,7 +95,11 @@ async fn main() {
     // 1.5 Initialize Redis Pool
     let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
     if let Ok(manager) = RedisConnectionManager::new(redis_url) {
-        if let Ok(pool) = bb8_redis::bb8::Pool::builder().build(manager).await {
+        if let Ok(pool) = bb8_redis::bb8::Pool::builder()
+                .max_size(20)
+                .min_idle(Some(5))
+                .connection_timeout(std::time::Duration::from_secs(3))
+                .build(manager).await {
             let _ = api::REDIS_POOL.set(pool);
             println!("✅ Connected to Redis successfully");
         } else {
@@ -147,6 +152,7 @@ async fn main() {
         .route("/api/logs/clear", post(handlers::clear_log_file))
         // Middlewares
         .layer(cors)
+        .layer(CompressionLayer::new().gzip(true).br(true))
         .layer(TraceLayer::new_for_http())
         .layer(GovernorLayer { config: governor_conf })
         .layer(middleware::from_fn(logging_middleware))
