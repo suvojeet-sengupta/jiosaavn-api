@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - target: 3000
-        published: 3001
+        published: 3000
         protocol: tcp
         mode: host
     volumes:

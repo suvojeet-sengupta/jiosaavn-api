@@ -21,8 +21,7 @@ jobs:
           # port: ${{ secrets.VPS_PORT }}
           script: |
             # Navigate to the project directory on your VPS.
-            # IMPORTANT: Change '/path/to/hqaudio-api' to the actual path on your server!
-            cd /path/to/hqaudio-api
+            cd ~/hqaudio-api
             
             # Pull the latest changes
             git pull origin main
