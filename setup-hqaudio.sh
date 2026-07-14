@@ -7,8 +7,8 @@ systemctl start docker
 
 # 2. Repo clone
 cd ~
-git clone https://github.com/suvojeet-sengupta/jiosaavn-api.git
-cd jiosaavn-api
+git clone https://github.com/suvojeet-sengupta/hqaudio-api.git
+cd hqaudio-api
 docker compose up -d
 
 # 3. Nginx

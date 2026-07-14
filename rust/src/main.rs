@@ -78,7 +78,7 @@ use utoipa_swagger_ui::SwaggerUi;
         )
     ),
     tags(
-        (name = "jiosaavn-api", description = "JioSaavn API endpoints")
+        (name = "hqaudio-api", description = "HqAudio API endpoints")
     )
 )]
 struct ApiDoc;
@@ -197,7 +197,7 @@ async fn home_handler() -> impl IntoResponse {
     (
         StatusCode::OK,
         [("Content-Type", "application/json")],
-        r#"{"success":true,"message":"Welcome to JioSaavn API in Rust! Check out docs at https://hqaudio.suvojeetsengupta.in/docs"}"#,
+        r#"{"success":true,"message":"Welcome to HqAudio API in Rust! Check out docs at https://hqaudio.suvojeetsengupta.in/docs"}"#,
     )
 }
 

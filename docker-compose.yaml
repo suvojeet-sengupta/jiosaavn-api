@@ -1,29 +1,29 @@
 services:
   app:
-    container_name: jiosaavn-api
+    container_name: hqaudio-api
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - target: 3000
-        published: 3000
+        published: 3001
         protocol: tcp
         mode: host
     volumes:
-      - ./logs:/app/logs
+      - ./logs:/app/logs:z
     environment:
       - PORT=3000
       - RUST_LOG=info
-      - REDIS_URL=redis://jiosaavn-redis:6379/0
+      - REDIS_URL=redis://hqaudio-redis:6379/0
       - TZ=Asia/Kolkata
     env_file:
       - .env
     restart: unless-stopped
     depends_on:
-      - jiosaavn-redis
+      - hqaudio-redis
 
-  jiosaavn-redis:
-    container_name: jiosaavn-redis
+  hqaudio-redis:
+    container_name: hqaudio-redis
     image: redis:7-alpine
     restart: unless-stopped
     volumes:

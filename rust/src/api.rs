@@ -107,11 +107,11 @@ pub async fn use_fetch(
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
     let open_until = CIRCUIT_OPEN_UNTIL.load(Ordering::Relaxed);
     if now < open_until {
-        let _ = crate::LOG_CHANNEL.send(format!("[CIRCUIT BREAKER] Rejecting request to JioSaavn for {}s", open_until - now));
-        return Err("JioSaavn API is currently unreachable. Circuit breaker is OPEN.".to_string());
+        let _ = crate::LOG_CHANNEL.send(format!("[CIRCUIT BREAKER] Rejecting request to HqAudio for {}s", open_until - now));
+        return Err("HqAudio API is currently unreachable. Circuit breaker is OPEN.".to_string());
     }
 
-    let mut url = url::Url::parse("https://www.jiosaavn.com/api.php").unwrap();
+    let mut url = url::Url::parse("https://www.hqaudio.com/api.php").unwrap();
     {
         let mut query = url.query_pairs_mut();
         query.append_pair("__call", endpoint);
@@ -147,7 +147,7 @@ pub async fn use_fetch(
         .choose(&mut rand::thread_rng())
         .unwrap_or(&CLIENT_IDENTITIES[0]);
 
-    let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] Fetching upstream from JioSaavn for: {}", cache_key));
+    let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] Fetching upstream from HqAudio for: {}", cache_key));
 
     // Request coalescing: check if there's already an in-flight request for this key
     let flight_cell = {

@@ -202,11 +202,11 @@ pub async fn get_songs(
     let endpoint = if let Some(link) = query.link {
         // extract link token
         let token = link
-            .split("jiosaavn.com/song/")
+            .split("hqaudio.com/song/")
             .nth(1)
             .and_then(|s| s.split('/').nth(1))
             .and_then(|s| s.split('?').next())
-            .ok_or_else(|| AppError::BadRequest("Invalid JioSaavn song link".to_string()))?;
+            .ok_or_else(|| AppError::BadRequest("Invalid HqAudio song link".to_string()))?;
         params.insert("token".to_string(), token.to_string());
         params.insert("type".to_string(), "song".to_string());
         "webapi.get"

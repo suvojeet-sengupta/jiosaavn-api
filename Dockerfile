@@ -18,11 +18,11 @@ RUN apk add --no-cache tzdata
 
 WORKDIR /app
 
-COPY --from=builder /usr/src/app/target/release/jiosaavn-api-rust ./jiosaavn-api-rust
+COPY --from=builder /usr/src/app/target/release/hqaudio-api-rust ./hqaudio-api-rust
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV RUST_LOG=info
 
-CMD ["./jiosaavn-api-rust"]
+CMD ["./hqaudio-api-rust"]

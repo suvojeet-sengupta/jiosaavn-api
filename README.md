@@ -1,9 +1,9 @@
-# JioSaavn API
+# HqAudio API
 
-![GitHub License](https://img.shields.io/github/license/suvojeet-sengupta/jiosaavn-api)
-![GitHub Release](https://img.shields.io/github/v/release/suvojeet-sengupta/jiosaavn-api)
+![GitHub License](https://img.shields.io/github/license/suvojeet-sengupta/hqaudio-api)
+![GitHub Release](https://img.shields.io/github/v/release/suvojeet-sengupta/hqaudio-api)
 
-An Unofficial API for downloading high-quality songs, albums, playlists, and more from [JioSaavn](https://jiosaavn.com). Fully migrated to Rust for superior performance and memory safety.
+An Unofficial API for downloading high-quality songs, albums, playlists, and more from [HqAudio](https://hqaudio.com). Fully migrated to Rust for superior performance and memory safety.
 
 ## 📚 Documentation
 
@@ -20,8 +20,8 @@ For a detailed list of changes, see the [CHANGELOG](CHANGELOG.md).
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/suvojeet-sengupta/jiosaavn-api
-   cd jiosaavn-api
+   git clone https://github.com/suvojeet-sengupta/hqaudio-api
+   cd hqaudio-api
    ```
 
 2. Start the application:
@@ -40,8 +40,8 @@ For a detailed list of changes, see the [CHANGELOG](CHANGELOG.md).
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/suvojeet-sengupta/jiosaavn-api
-   cd jiosaavn-api
+   git clone https://github.com/suvojeet-sengupta/hqaudio-api
+   cd hqaudio-api
    ```
 
 2. Configure environment variables (optional):
