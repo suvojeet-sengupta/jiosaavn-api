@@ -320,6 +320,13 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
     let method = req.method().to_string();
     let uri = req.uri().to_string();
     
+    let user_agent = req
+        .headers()
+        .get(axum::http::header::USER_AGENT)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("unknown")
+        .to_string();
+
     // Smart Logging: Extract Real IP Address (Support for Proxies & Docker NAT)
     let ip = req
         .headers()
@@ -348,9 +355,14 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
     
     let duration = start.elapsed();
     let status = response.status().as_u16();
+    let content_length = response
+        .headers()
+        .get(axum::http::header::CONTENT_LENGTH)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("0");
     
-    // Add IP to the log format
-    let log_line = format!("[IP: {}] {} {} {} {}ms", ip, method, uri, status, duration.as_millis());
+    // Robust log format with IP, User-Agent, and Response Size
+    let log_line = format!("[IP: {}] [UA: {}] {} {} {} {}ms {}B", ip, user_agent, method, uri, status, duration.as_millis(), content_length);
     let _ = LOG_CHANNEL.send(log_line);
     
     response
