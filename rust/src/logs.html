@@ -1491,20 +1491,22 @@
             if (line.includes('[CACHE EXPIRED]')) return { type: 'cache-expired', raw: line };
             if (line.includes('[UPSTREAM FETCH SUCCESS]')) return { type: 'upstream', raw: line };
 
-            // Parse request log: [YYYY-MM-DD HH:MM:SS] [IP: xxx] METHOD /uri STATUS DURATIONms
-            const match = line.match(/^(\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\])\s+(?:\[IP:\s*([^\]]+)\]\s+)?(\w+)\s+(\S+)\s+(\d{3})\s+(\d+ms)$/);
+            // Parse request log: [YYYY-MM-DD HH:MM:SS] [IP: xxx] [UA: xxx] METHOD /uri STATUS DURATIONms SIZEB
+            const match = line.match(/^(\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\])\s+(?:\[IP:\s*([^\]]+)\]\s+)?(?:\[UA:\s*([^\]]+)\]\s+)?(\w+)\s+(\S+)\s+(\d{3})\s+(\d+ms)(?:\s+(\d+)B)?$/);
             if (match) {
                 return {
                     type: 'request',
                     raw: line,
                     time: match[1],
                     ip: match[2] || 'unknown',
-                    method: match[3],
-                    uri: match[4],
-                    status: parseInt(match[5], 10),
-                    statusStr: match[5],
-                    duration: match[6],
-                    durationMs: parseInt(match[6], 10)
+                    ua: match[3] || 'unknown',
+                    method: match[4],
+                    uri: match[5],
+                    status: parseInt(match[6], 10),
+                    statusStr: match[6],
+                    duration: match[7],
+                    durationMs: parseInt(match[7], 10),
+                    sizeBytes: match[8] || '0'
                 };
             }
 
