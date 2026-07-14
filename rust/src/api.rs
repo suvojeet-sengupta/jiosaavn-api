@@ -147,6 +147,52 @@ fn build_cache_key(endpoint: &str, params: &HashMap<String, String>) -> String {
     format!("{}:{}", endpoint, param_str)
 }
 
+fn format_cache_key_for_log(cache_key: &str) -> String {
+    let parts: Vec<&str> = cache_key.splitn(2, ':').collect();
+    if parts.len() != 2 {
+        return cache_key.to_string();
+    }
+    
+    let endpoint = parts[0];
+    let params_str = parts[1];
+    
+    let mut q = None;
+    let mut id = None;
+    
+    for pair in params_str.split('&') {
+        let kv: Vec<&str> = pair.splitn(2, '=').collect();
+        if kv.len() == 2 {
+            if kv[0] == "q" || kv[0] == "query" {
+                q = Some(kv[1]);
+            } else if kv[0] == "lyrics_id" || kv[0] == "pids" || kv[0] == "token" || kv[0] == "albumid" {
+                id = Some(kv[1]);
+            }
+        }
+    }
+    
+    let readable_endpoint = match endpoint {
+        "autocomplete.get" => "Autocomplete",
+        "search.getResults" => "Search All",
+        "search.getAlbumResults" => "Search Albums",
+        "search.getArtistResults" => "Search Artists",
+        "search.getPlaylistResults" => "Search Playlists",
+        "song.getDetails" => "Song Details",
+        "lyrics.getLyrics" => "Lyrics",
+        "content.getAlbumDetails" => "Album Details",
+        "playlist.getDetails" => "Playlist Details",
+        "artist.getArtistPageDetails" => "Artist Details",
+        _ => endpoint,
+    };
+    
+    if let Some(query) = q {
+        format!("{} [{}]", readable_endpoint, query)
+    } else if let Some(identifier) = id {
+        format!("{} [{}]", readable_endpoint, identifier)
+    } else {
+        format!("{} [{}]", readable_endpoint, params_str)
+    }
+}
+
 pub async fn use_fetch(
     endpoint: &str,
     params: HashMap<String, String>,
@@ -186,7 +232,7 @@ pub async fn use_fetch(
                 let cached_data: Result<String, _> = conn.get(&cache_key).await;
                 if let Ok(data_str) = cached_data {
                     if let Ok(parsed) = serde_json::from_str(&data_str) {
-                        let _ = crate::LOG_CHANNEL.send(format!("[CACHE HIT] Key: {}", cache_key));
+                        let _ = crate::LOG_CHANNEL.send(format!("[CACHE HIT] {}", format_cache_key_for_log(&cache_key)));
                         return Ok(parsed);
                     }
                 }
@@ -194,7 +240,7 @@ pub async fn use_fetch(
         }
     }
 
-    let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] Fetching upstream from HqAudio for: {}", cache_key));
+    let _ = crate::LOG_CHANNEL.send(format!("[CACHE MISS] {}", format_cache_key_for_log(&cache_key)));
 
     // 5. Request coalescing — grab or create a flight cell, then use
     //    get_or_try_init so only the FIRST caller performs the upstream
@@ -270,7 +316,7 @@ pub async fn use_fetch(
                 .map_err(|e| format!("Failed to parse JSON response: {}", e))?;
 
             let fetch_duration = fetch_start.elapsed().as_millis();
-            let _ = crate::LOG_CHANNEL.send(format!("[UPSTREAM FETCH SUCCESS] Key: {} (Took {}ms)", cache_key_for_init, fetch_duration));
+            let _ = crate::LOG_CHANNEL.send(format!("[UPSTREAM FETCH SUCCESS] {} (Took {}ms)", format_cache_key_for_log(&cache_key_for_init), fetch_duration));
 
             Ok(data)
         })
