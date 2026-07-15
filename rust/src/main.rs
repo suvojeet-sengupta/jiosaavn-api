@@ -345,8 +345,44 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
                 .map(|ci| ci.0.ip().to_string())
                 .unwrap_or_else(|| "unknown".to_string())
         });
+        
+    // --- DDOS BLOCKLIST CHECK ---
+    if let Some(pool) = crate::api::REDIS_POOL.get() {
+        if let Ok(mut conn) = pool.get().await {
+            use redis::AsyncCommands;
+            let ban_key = format!("ban:{}", ip);
+            let is_banned: bool = conn.exists(&ban_key).await.unwrap_or(false);
+            if is_banned {
+                let _ = crate::LOG_CHANNEL.send(format!("[DDOS PROTECT] Blocked request from banned IP: {}", ip));
+                return (axum::http::StatusCode::FORBIDDEN, "IP blocked for 24 hours due to abuse").into_response();
+            }
+        }
+    }
+    // ----------------------------
     
     let response = next.run(req).await;
+    let status = response.status().as_u16();
+    
+    // --- DDOS STRIKE TRACKING ---
+    if status == 429 { // Too Many Requests
+        if let Some(pool) = crate::api::REDIS_POOL.get() {
+            if let Ok(mut conn) = pool.get().await {
+                use redis::AsyncCommands;
+                let strike_key = format!("strikes:{}", ip);
+                let strikes: i32 = conn.incr(&strike_key, 1).await.unwrap_or(0);
+                if strikes == 1 {
+                    let _: Result<(), _> = conn.expire(&strike_key, 60).await; // 1 min window
+                }
+                
+                if strikes >= 15 { // 15 rate limit hits in 1 minute
+                    let ban_key = format!("ban:{}", ip);
+                    let _: Result<(), _> = conn.set_ex(&ban_key, "1", 86400).await; // Ban for 24h
+                    let _ = crate::LOG_CHANNEL.send(format!("[DDOS PROTECT] 🚨 BANNED IP {} for 24 hours after {} strikes", ip, strikes));
+                }
+            }
+        }
+    }
+    // ----------------------------
     
     // Smart Logging: Ignore /logs and /api/logs requests to avoid spamming our own logs
     if uri.starts_with("/logs") || uri.starts_with("/api/logs") {
@@ -354,7 +390,6 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
     }
     
     let duration = start.elapsed();
-    let status = response.status().as_u16();
     let content_length = response
         .headers()
         .get(axum::http::header::CONTENT_LENGTH)
