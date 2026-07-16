@@ -425,6 +425,7 @@ async fn system_status_task() {
 
         let mut redis_status = "Disconnected".to_string();
         let mut cache_system_status = "Degraded".to_string();
+        let mut banned_ips_count = 0;
         
         if let Some(pool) = crate::api::REDIS_POOL.get() {
             if let Ok(Ok(mut conn)) = tokio::time::timeout(std::time::Duration::from_millis(500), pool.get()).await {
@@ -439,6 +440,13 @@ async fn system_status_task() {
                 } else {
                     redis_status = "Error".to_string();
                 }
+
+                // Fetch ban count
+                let mut keys_cmd = redis::cmd("KEYS");
+                keys_cmd.arg("ban:*");
+                if let Ok(Ok(keys)) = tokio::time::timeout(std::time::Duration::from_millis(500), keys_cmd.query_async::<Vec<String>>(&mut *conn)).await {
+                    banned_ips_count = keys.len();
+                }
             } else {
                 redis_status = "Pool Exhausted/Error".to_string();
             }
@@ -452,6 +460,8 @@ async fn system_status_task() {
             "cache_system": cache_system_status,
             "redis": redis_status,
             "db": db_status,
+            "banned_ips": banned_ips_count,
+            "ddos_protection": if redis_status == "Connected" { "Active" } else { "Degraded" }
         }).to_string();
         
         let _ = LOG_BROADCAST.send(format!("[SYS_STATUS] {}", status_json));
