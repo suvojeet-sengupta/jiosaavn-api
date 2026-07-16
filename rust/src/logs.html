@@ -990,7 +990,23 @@
                 max-width: 500px;
             }
         }
+
+        /* ═══════════════════════════════════════════
+           MODAL
+           ═══════════════════════════════════════════ */
+        .modal-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; }
+        .modal { background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-xl); width: 90%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { margin: 0; font-size: 1.1rem; color: var(--text-main); }
+        .modal-close { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; }
+        .modal-close:hover { color: var(--text-main); }
+        .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+        .banned-ip-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 0.5rem; background: var(--bg-base); }
+        .banned-ip-item .ip-addr { font-family: var(--font-mono); color: var(--danger); }
+        .banned-ip-item button { background: var(--bg-element); border: 1px solid var(--border-light); color: var(--text-main); padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; margin-left: 0.5rem; }
+        .banned-ip-item button:hover { background: var(--border); }
     </style>
+
 </head>
 <body>
 
@@ -1117,7 +1133,7 @@
                     <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     DDoS Protect: <strong id="stat-ddos-sys">Checking...</strong>
                 </div>
-                <div class="stat-item" style="color: var(--danger);">
+                <div class="stat-item" style="color: var(--danger); cursor: pointer;" onclick="openBannedModal()" title="Click to manage banned IPs">
                     <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
                     Banned IPs: <strong id="stat-banned-ips">0</strong>
                 </div>
@@ -1849,6 +1865,74 @@
         function getTodayStr() {
             return new Date().toISOString().split('T')[0];
         }
+
+        // ═══════════════════════════════════════════
+        // MODALS & BAN MANAGEMENT
+        // ═══════════════════════════════════════════
+        async function openBannedModal() {
+            document.getElementById('banned-modal').style.display = 'flex';
+            const list = document.getElementById('banned-ip-list');
+            list.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-muted);">Loading...</div>';
+            try {
+                const res = await fetch('/api/logs/bans', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: logsPassword})
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) renderBannedIps(data.data);
+                    else list.innerHTML = `<div style="color:var(--danger);">${escapeHtml(data.message)}</div>`;
+                }
+            } catch (err) {
+                list.innerHTML = '<div style="color:var(--danger);">Error fetching bans.</div>';
+            }
+        }
+        function closeBannedModal() {
+            document.getElementById('banned-modal').style.display = 'none';
+        }
+        function renderBannedIps(ips) {
+            const list = document.getElementById('banned-ip-list');
+            if (!ips || ips.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--success);">No IPs are currently banned.</div>';
+                return;
+            }
+            list.innerHTML = ips.map(ip => `
+                <div class="banned-ip-item" id="ban-${escapeHtml(ip)}">
+                    <div class="ip-addr">${escapeHtml(ip)}</div>
+                    <div>
+                        <button onclick="filterByIp('${escapeHtml(ip)}')">View Behavior</button>
+                        <button onclick="unbanIp('${escapeHtml(ip)}')">Unban</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        function filterByIp(ip) {
+            closeBannedModal();
+            const searchInput = document.getElementById('search-filter');
+            searchInput.value = ip;
+            applyAllFilters();
+        }
+        async function unbanIp(ip) {
+            if (!confirm(`Are you sure you want to unban IP: ${ip}?`)) return;
+            try {
+                const res = await fetch('/api/logs/unban', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: logsPassword, ip: ip})
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        const el = document.getElementById(`ban-${ip}`);
+                        if (el) el.remove();
+                    } else alert(data.message);
+                }
+            } catch (e) {
+                alert("Error unbanning IP.");
+            }
+        }
     </script>
+
 </body>
 </html>

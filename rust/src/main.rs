@@ -151,6 +151,8 @@ async fn main() {
         .route("/api/logs/view", post(handlers::view_log_file))
         .route("/api/logs/ws", get(handlers::logs_ws))
         .route("/api/logs/clear", post(handlers::clear_log_file))
+        .route("/api/logs/bans", post(handlers::get_banned_ips))
+        .route("/api/logs/unban", post(handlers::unban_ip))
         // Middlewares
         .layer(cors)
         .layer(CompressionLayer::new().gzip(true).br(true))
