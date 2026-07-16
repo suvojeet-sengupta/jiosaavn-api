@@ -147,6 +147,8 @@ async fn main() {
         .route("/api/artists/:id", get(handlers::get_artist_details))
         // Logs UI & Viewer
         .route("/logs", get(handlers::logs_ui))
+        .route("/api/logs/styles.css", get(handlers::logs_css))
+        .route("/api/logs/script.js", get(handlers::logs_js))
         .route("/api/logs/files", post(handlers::get_log_files))
         .route("/api/logs/view", post(handlers::view_log_file))
         .route("/api/logs/ws", get(handlers::logs_ws))

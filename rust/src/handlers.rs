@@ -698,7 +698,21 @@ pub async fn search_playlists(
 // --- Logs UI and API Handlers ---
 
 pub async fn logs_ui() -> Html<&'static str> {
-    Html(include_str!("logs.html"))
+    Html(include_str!("logs_ui/index.html"))
+}
+
+pub async fn logs_css() -> impl axum::response::IntoResponse {
+    (
+        [(axum::http::header::CONTENT_TYPE, "text/css")],
+        include_str!("logs_ui/styles.css"),
+    )
+}
+
+pub async fn logs_js() -> impl axum::response::IntoResponse {
+    (
+        [(axum::http::header::CONTENT_TYPE, "application/javascript")],
+        include_str!("logs_ui/script.js"),
+    )
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]
