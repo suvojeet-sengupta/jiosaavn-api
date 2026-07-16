@@ -915,40 +915,4 @@ async fn handle_ws(socket: WebSocket, file_name: String) {
     }
 }
 
-pub async fn get_system_status(
-    Json(payload): Json<LogsAuthPayload>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    verify_logs_password(&payload.password)?;
-    
-    let mut redis_status = "Disconnected".to_string();
-    let mut cache_system_status = "Degraded".to_string();
-    
-    if let Some(pool) = crate::api::REDIS_POOL.get() {
-        if let Ok(mut conn) = pool.get().await {
-            use redis::AsyncCommands;
-            let pong: redis::RedisResult<String> = redis::cmd("PING").query_async(&mut *conn).await;
-            if pong.is_ok() {
-                redis_status = "Connected".to_string();
-                cache_system_status = "Operational".to_string();
-            } else {
-                redis_status = "Error".to_string();
-            }
-        } else {
-            redis_status = "Pool Exhausted/Error".to_string();
-        }
-    } else {
-        redis_status = "Not Initialized".to_string();
-    }
-    
-    let db_status = "N/A (Redis Only)".to_string();
-    
-    Ok(Json(ApiResponse {
-        success: true,
-        data: serde_json::json!({
-            "cache_system": cache_system_status,
-            "redis": redis_status,
-            "db": db_status,
-        })
-    }))
-}
 

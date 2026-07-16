@@ -1214,8 +1214,6 @@
                     dashboard.style.display = 'grid';
                     // Trigger reflow for animation
                     void dashboard.offsetWidth;
-                    fetchSystemStatus();
-                    if (!window.statusInterval) window.statusInterval = setInterval(fetchSystemStatus, 10000);
                 } else {
                     errorMsg.style.display = 'block';
                     document.getElementById('password').value = '';
@@ -1235,8 +1233,6 @@
             if (success) {
                 document.getElementById('login-card').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'grid';
-                fetchSystemStatus();
-                if (!window.statusInterval) window.statusInterval = setInterval(fetchSystemStatus, 10000);
             } else {
                 localStorage.removeItem('logs_password');
                 logsPassword = '';
@@ -1247,33 +1243,7 @@
             localStorage.removeItem('logs_password');
             logsPassword = '';
             if (ws) ws.close();
-            if (window.statusInterval) {
-                clearInterval(window.statusInterval);
-                window.statusInterval = null;
-            }
             location.reload();
-        }
-
-        async function fetchSystemStatus() {
-            if (!logsPassword) return;
-            try {
-                const res = await fetch('/api/logs/status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: logsPassword })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success && data.data) {
-                        const sys = data.data;
-                        document.getElementById('stat-cache-sys').innerText = sys.cache_system || 'Unknown';
-                        document.getElementById('stat-redis-sys').innerText = sys.redis || 'Unknown';
-                        document.getElementById('stat-db-sys').innerText = sys.db || 'Unknown';
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to fetch system status:', err);
-            }
         }
 
         // ═══════════════════════════════════════════
@@ -1452,6 +1422,15 @@
                     const node = div.firstChild;
                     if (node) outputContainer.appendChild(node);
                     if (checkIsScrollAtBottom()) scrollToBottom();
+                } else if (message.startsWith('[SYS_STATUS]')) {
+                    try {
+                        const sys = JSON.parse(message.slice(12));
+                        document.getElementById('stat-cache-sys').innerText = sys.cache_system || 'Unknown';
+                        document.getElementById('stat-redis-sys').innerText = sys.redis || 'Unknown';
+                        document.getElementById('stat-db-sys').innerText = sys.db || 'Unknown';
+                    } catch (e) {
+                        console.error("Failed to parse system status", e);
+                    }
                 } else {
                     // Live streamed log line
                     const wasAtBottom = checkIsScrollAtBottom();

@@ -111,6 +111,7 @@ async fn main() {
 
     // Start background log rotation cleanup
     tokio::spawn(clean_old_logs_task());
+    tokio::spawn(system_status_task());
 
     // 2. Setup CORS
     let cors = CorsLayer::permissive();
@@ -150,7 +151,6 @@ async fn main() {
         .route("/api/logs/view", post(handlers::view_log_file))
         .route("/api/logs/ws", get(handlers::logs_ws))
         .route("/api/logs/clear", post(handlers::clear_log_file))
-        .route("/api/logs/status", post(handlers::get_system_status))
         // Middlewares
         .layer(cors)
         .layer(CompressionLayer::new().gzip(true).br(true))
@@ -408,6 +408,53 @@ async fn clean_old_logs_task() {
     loop {
         cleanup_old_logs().await;
         tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+    }
+}
+
+async fn system_status_task() {
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(10));
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    
+    loop {
+        interval.tick().await;
+        
+        // Ensure there are active subscribers before querying pool
+        if LOG_BROADCAST.receiver_count() == 0 {
+            continue;
+        }
+
+        let mut redis_status = "Disconnected".to_string();
+        let mut cache_system_status = "Degraded".to_string();
+        
+        if let Some(pool) = crate::api::REDIS_POOL.get() {
+            if let Ok(Ok(mut conn)) = tokio::time::timeout(std::time::Duration::from_millis(500), pool.get()).await {
+                let mut cmd = redis::cmd("PING");
+                let ping_fut = cmd.query_async(&mut *conn);
+                if let Ok(Ok(pong)) = tokio::time::timeout(std::time::Duration::from_millis(500), ping_fut).await {
+                    let pong: String = pong;
+                    if pong == "PONG" {
+                        redis_status = "Connected".to_string();
+                        cache_system_status = "Operational".to_string();
+                    }
+                } else {
+                    redis_status = "Error".to_string();
+                }
+            } else {
+                redis_status = "Pool Exhausted/Error".to_string();
+            }
+        } else {
+            redis_status = "Not Initialized".to_string();
+        }
+        
+        let db_status = "N/A (Redis Only)".to_string();
+        
+        let status_json = serde_json::json!({
+            "cache_system": cache_system_status,
+            "redis": redis_status,
+            "db": db_status,
+        }).to_string();
+        
+        let _ = LOG_BROADCAST.send(format!("[SYS_STATUS] {}", status_json));
     }
 }
 
