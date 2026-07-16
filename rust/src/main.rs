@@ -116,11 +116,11 @@ async fn main() {
     // 2. Setup CORS
     let cors = CorsLayer::permissive();
 
-    // 2.5 Setup Rate Limiter (2 req/sec per IP, burst up to 10)
+    // 2.5 Setup Rate Limiter (10 req/sec per IP, burst up to 50)
     let governor_conf = std::sync::Arc::new(
         GovernorConfigBuilder::default()
-            .per_second(2)
-            .burst_size(10)
+            .per_second(10)
+            .burst_size(50)
             .key_extractor(SmartIpKeyExtractor)
             .finish()
             .unwrap(),
@@ -379,7 +379,7 @@ async fn logging_middleware(req: Request, next: Next) -> Response {
                     let _: Result<(), _> = conn.expire(&strike_key, 60).await; // 1 min window
                 }
                 
-                if strikes >= 15 { // 15 rate limit hits in 1 minute
+                if strikes >= 100 { // 100 rate limit hits in 1 minute
                     let ban_key = format!("ban:{}", ip);
                     let _: Result<(), _> = conn.set_ex(&ban_key, "1", 86400).await; // Ban for 24h
                     let _ = crate::LOG_CHANNEL.send(format!("[DDOS PROTECT] 🚨 BANNED IP {} for 24 hours after {} strikes", ip, strikes));
